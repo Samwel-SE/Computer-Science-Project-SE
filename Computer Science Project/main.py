@@ -21,7 +21,7 @@ class GameObject():
     pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height))
 
   def collision(self, obj2):
-    if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) or (self.y + self.height > obj2.y and self.y + self.height < obj2.y + obj2.height):
+    if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) and (self.y + self.height > obj2.y and self.y < obj2.y + obj2.height):
       return True
 
 #map class
@@ -74,6 +74,12 @@ class Player(GameObject):
       self.y -= self.jump_vel
       self.jump_vel -= 1  
 
+      #jump_vel goes from positive to negative during jump function allowing player to fall back down to the ground.
+      #the below statement ends the jump function once jump vel has become smaller than negative jump height
+      if self.jump_vel < -self.jump_height:
+        self.jumping = False
+        self.jump_vel = self.jump_height
+
     #while player has not pressed jump key they will constantly move downwards as to not break game
     else:
       self.y += 10
@@ -96,10 +102,11 @@ terr = Map(1600, random.randint(140, 170), black)
 
 #game objects
 l_wall = GameObject(0, 0, 1, 800, blue)
+r_wall = GameObject(1495, 0, 1, 800, blue)
 player1 = Player(300, 300, 5, 5, red,)
 
 Clock = pygame.time.Clock()
-pygame.display.set_caption('Tanks')      
+pygame.display.set_caption('Bomber Bros')      
 
 #game loop
 while True:                                                                 
@@ -117,23 +124,21 @@ while True:
   if player1.movement[1]:
     player1.x -= 3
 
-
-  #player collision
-  if player1.collision(terr.map_pieces[player1.x]): 
-    player1.y = terr.map_pieces[player1.x].y -5
-    player1.jumping = False
-    player1.jump_vel = player1.jump_height
+  #player collision with ground: checks if any pixels making up bottom of player square overlapping with ground
+  for i in range(0,4):
+    if player1.collision(terr.map_pieces[player1.x +i]):
+      player1.y = terr.map_pieces[player1.x].y - 5
+      break
   
+  #player collision with game boundaries
+  if player1.collision(l_wall):
+    player1.x = 5
+  elif player1.collision(r_wall):
+    player1.x = 1490
 
-  #if player1.collision(terr.map_pieces[player1.x + 5]) or player1.collision(terr.map_pieces[player1.x -5]):
-    #print("testing")
-    #player1.x = terr.map_pieces[player1.x].x
 
-
-  
   #game objects drawn here
   terr.draw()
   player1.draw()
-  l_wall.draw()
   pygame.display.update()
   Clock.tick(60)  
