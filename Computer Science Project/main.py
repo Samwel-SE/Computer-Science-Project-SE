@@ -48,10 +48,14 @@ class Player(GameObject):
 
   def __init__(self, x, y, width, height, colour):
     super().__init__(x, y, width, height, colour)
+    
+    #movement array values change when inputs from keyboard are checked, if true the player will move left or right
     self.movement = [False, False]
+    
+    #jumping is true when player is not touching the ground
     self.jumping = False
     self.jump_vel = 12
-    self.jump_height = self.jump_vel
+    self.jump_height = 12
 
   #gets keys currently pressed so player character can move
   def inputs(self):                                         
@@ -71,15 +75,11 @@ class Player(GameObject):
   #player jump
   def jump(self):
     if self.jumping:
+      
+      #jump_vel goes from positive to negative during jump function allowing player to fall back down to the ground.
       self.y -= self.jump_vel
       self.jump_vel -= 1  
-
-      #jump_vel goes from positive to negative during jump function allowing player to fall back down to the ground.
-      #the below statement ends the jump function once jump vel has become smaller than negative jump height
-      if self.jump_vel < -self.jump_height:
-        self.jumping = False
-        self.jump_vel = self.jump_height
-
+    
     #while player has not pressed jump key they will constantly move downwards as to not break game
     else:
       self.y += 10
@@ -124,10 +124,12 @@ while True:
   if player1.movement[1]:
     player1.x -= 3
 
-  #player collision with ground: checks if any pixels making up bottom of player square overlapping with ground
+  #player collision with ground: checks if any pixels within width of player square overlapping with player
   for i in range(0,4):
     if player1.collision(terr.map_pieces[player1.x +i]):
       player1.y = terr.map_pieces[player1.x].y - 5
+      player1.jumping = False
+      player1.jump_vel = player1.jump_height
       break
   
   #player collision with game boundaries
@@ -136,9 +138,8 @@ while True:
   elif player1.collision(r_wall):
     player1.x = 1490
 
-
   #game objects drawn here
-  terr.draw()
   player1.draw()
+  terr.draw()
   pygame.display.update()
   Clock.tick(60)  
