@@ -23,6 +23,7 @@ class GameObject():
   def collision(self, obj2):
     if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) and (self.y + self.height > obj2.y and self.y < obj2.y + obj2.height):
       return True
+     
 
 #map class
 class Map():
@@ -49,13 +50,19 @@ class Player(GameObject):
   def __init__(self, x, y, width, height, colour):
     super().__init__(x, y, width, height, colour)
     
-    #movement array values change when inputs from keyboard are checked, if true the player will move left or right
+    #movement tuple's bool's change when a and d keys pressed, if true the player will move left or right
     self.movement = [False, False]
     
     #jumping is true when player is not touching the ground
     self.jumping = False
     self.jump_vel = 12
     self.jump_height = 12
+
+    #bombs object array
+    self.bombs = []
+    #bullet direction x and y
+    self.bomb_dx = 0
+    self.bomb_dy = 0
 
   #gets keys currently pressed so player character can move
   def inputs(self):                                         
@@ -72,6 +79,12 @@ class Player(GameObject):
         if event.key == pygame.K_a:
           self.movement[1] = False
 
+    #Once the left mouse button is pressed it will create a bullet object
+    if event.type == pygame.MOUSEBUTTONDOWN:
+      if pygame.mouse.get_pressed(3):
+        self.bombs.append(Bomb(self.x+2, self.y+2, 3, 3, (255, 255, 0),self.bomb_dx, self.bomb_dy))
+        print(self.bomb_dx, self.bomb_dy)
+
   #player jump
   def jump(self):
     if self.jumping:
@@ -82,40 +95,77 @@ class Player(GameObject):
     
     #while player has not pressed jump key they will constantly move downwards as to not break game
     else:
-      self.y += 10
+      self.y += 5
 
+  #gets coordinates of line making up player cursor
+  def get_cursor(self, cursor_tuple):
+    output_tuple = [0,0]
+    if cursor_tuple[0] >= (self.x +2):
+      output_tuple[0] = self.x +(cursor_tuple[0] -self.x)*0.08
+      self.bomb_dx = output_tuple[0] - self.x
+    else:
+      output_tuple[0] = self.x -(self.x - cursor_tuple[0])*0.08
+      self.bomb_dx = output_tuple[0] - self.x
+    if cursor_tuple[1] <= (self.y +2):
+      output_tuple[1] = self.y - (self.y - cursor_tuple[1])*0.08
+      self.bomb_dy = output_tuple[1] - self.y
+    else:
+      output_tuple[1] = self.y +(cursor_tuple[1] - self.y)*0.08
+      self.bomb_dy = output_tuple[1] - self.y
+    return output_tuple
 
-#pygame initialisation
-pygame.init()                                            
-background = (255, 255, 255)
-DISPLAYSURF = pygame.display.set_mode((1500, 800))
-DISPLAYSURF.fill(background)                                                              
+#Bomb class.
+class Bomb(GameObject):
+
+  def __init__(self, x, y, width, height, color, dx, dy):
+    super().__init__(x, y, width, height, color)
+    self.dx = dx
+    self.dy = dy
+
+  def move(self):  
+    self.x += self.dx
+    self.y += self.dy
+    self.dy += 1
 
 #colours 
 black = (0, 0, 0)
 red = (255, 0, 0)
 blue = (0, 0, 255)
 white = (255, 255, 255)
+green = (0, 200, 50)
+
+#pygame initialisation
+pygame.init()                                            
+DISPLAYSURF = pygame.display.set_mode((1500, 800))
+DISPLAYSURF.fill(black)                                                              
+
+
 
 #creates procedurally generated terrain, parameters are: screen width and smoothness of terrain
-terr = Map(1600, random.randint(140, 170), black)  
+terr = Map(1600, random.randint(140, 170), green)  
 
 #game objects
 l_wall = GameObject(0, 0, 1, 800, blue)
 r_wall = GameObject(1495, 0, 1, 800, blue)
-player1 = Player(300, 300, 5, 5, red,)
+player1 = Player(300, 300, 5, 5, red)
 
 Clock = pygame.time.Clock()
 pygame.display.set_caption('Bomber Bros')      
 
+
 #game loop
 while True:                                                                 
-  DISPLAYSURF.fill(background)   
+  DISPLAYSURF.fill(black)   
   for event in pygame.event.get():
     if event.type == QUIT:
       pygame.quit()
       sys.exit()
     player1.inputs()
+
+  if terr.map_pieces[player1.x + 8].y < player1.y - 3:
+    player1.movement[0] = False
+  if terr.map_pieces[player1.x  -3].y < player1.y  - 3:
+    player1.movement[1] = False
 
   #player movement
   player1.jump()
@@ -124,6 +174,10 @@ while True:
   if player1.movement[1]:
     player1.x -= 3
 
+  #bomb movement
+  for i in player1.bombs:
+    i.move()
+
   #player collision with ground: checks if any pixels within width of player square overlapping with player
   for i in range(0,4):
     if player1.collision(terr.map_pieces[player1.x +i]):
@@ -131,15 +185,20 @@ while True:
       player1.jumping = False
       player1.jump_vel = player1.jump_height
       break
-  
+      
   #player collision with game boundaries
   if player1.collision(l_wall):
-    player1.x = 5
+    player1.x = 2
   elif player1.collision(r_wall):
     player1.x = 1490
 
   #game objects drawn here
-  player1.draw()
   terr.draw()
+  player1.draw()
+
+  for i in player1.bombs:
+    i.draw()
+  #draws player1 cursor
+  pygame.draw.line(DISPLAYSURF, red, (player1.x + 2, player1.y + 2), player1.get_cursor(pygame.mouse.get_pos()), 1)
   pygame.display.update()
   Clock.tick(60)  
