@@ -4,6 +4,8 @@ import sys
 import pygame
 from pygame.locals import QUIT
 
+import math
+
 #imports script I wrote for procedurally generation
 import perlinnoise
 
@@ -79,11 +81,10 @@ class Player(GameObject):
         if event.key == pygame.K_a:
           self.movement[1] = False
 
-    #Once the left mouse button is pressed it will create a bullet object
+    #Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object, 
     if event.type == pygame.MOUSEBUTTONDOWN:
-      if pygame.mouse.get_pressed(3):
+      if pygame.mouse.get_pressed(3) and len(self.bombs) == 0:
         self.bombs.append(Bomb(self.x+2, self.y+2, 3, 3, (255, 255, 0),self.bomb_dx, self.bomb_dy))
-        print(self.bomb_dx, self.bomb_dy)
 
   #player jump
   def jump(self):
@@ -121,19 +122,23 @@ class Bomb(GameObject):
     super().__init__(x, y, width, height, color)
     self.dx = dx
     self.dy = dy
+    self.exp_rad = 49
 
   def move(self):  
     self.x += self.dx
     self.y += self.dy
     self.dy += 1
+  
+  #on collision with terrain bomb will explode calling explode function, explosion can damage player and and destroy terrain.
+  def explode(self):
+    pygame.draw.circle(DISPLAYSURF, (255, 165, 0), (self.x, self.y), self.exp_rad)
 
 #colours 
 black = (0, 0, 0)
 red = (255, 0, 0)
 blue = (0, 0, 255)
 white = (255, 255, 255)
-green = (0, 200, 50)
-
+green = (0, 100, 10)
 #pygame initialisation
 pygame.init()                                            
 DISPLAYSURF = pygame.display.set_mode((1500, 800))
@@ -144,9 +149,11 @@ DISPLAYSURF.fill(black)
 #creates procedurally generated terrain, parameters are: screen width and smoothness of terrain
 terr = Map(1600, random.randint(140, 170), green)  
 
-#game objects
-l_wall = GameObject(0, 0, 1, 800, blue)
-r_wall = GameObject(1495, 0, 1, 800, blue)
+#game objects: parameters are, in order (x, y, width, height, colour)
+l_wall = GameObject(-99, 0, 100, 1000, blue)
+r_wall = GameObject(1495, 0, 100, 1000, blue)
+
+#player object
 player1 = Player(300, 300, 5, 5, red)
 
 Clock = pygame.time.Clock()
@@ -195,9 +202,24 @@ while True:
   #game objects drawn here
   terr.draw()
   player1.draw()
+  
+  #draws bombs once the player has pressed the mouse
+  for b in player1.bombs:
+    b.draw()
 
-  for i in player1.bombs:
-    i.draw()
+    #checks for collision between bombs and terrain
+    if b.collision(r_wall) or b.collision(l_wall) or b.collision(terr.map_pieces[round(b.x)]):
+      b.explode()
+      terr.map_pieces[round(b.x)].y += b.exp_rad*2
+      for i in range(1, b.exp_rad*2):
+        if b.exp_rad*2 < (i/3)**2 +math.sqrt(b.exp_rad):
+          break
+        terr.map_pieces[round(b.x) + i].y += b.exp_rad*2 - (i/3)**2 +math.sqrt(b.exp_rad*2)
+        terr.map_pieces[round(b.x) - i].y += b.exp_rad*2 - (i/3)**2 +math.sqrt(b.exp_rad*2)
+      player1.bombs.pop()
+    
+
+
   #draws player1 cursor
   pygame.draw.line(DISPLAYSURF, red, (player1.x + 2, player1.y + 2), player1.get_cursor(pygame.mouse.get_pos()), 1)
   pygame.display.update()
