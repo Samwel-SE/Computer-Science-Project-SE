@@ -57,11 +57,11 @@ class Map:
     def terrain_damgage(self, bomb):
         if b.exp_collision(self.map_pieces[bomb.x]):
             self.map_pieces[bomb.x].y += b.exp_rad
-        for i in range(1, bomb.exp_rad):
-            if b.exp_collision(self.map_pieces[bomb.x + i]):
-                self.map_pieces[bomb.x + i].y += math.sqrt(b.exp_rad**2 - i**2)
-            if b.exp_collision(self.map_pieces[bomb.x - i]):
-                self.map_pieces[bomb.x - i].y += math.sqrt(b.exp_rad**2 - i**2)
+            for i in range(1, bomb.exp_rad):
+                if b.exp_collision(self.map_pieces[bomb.x + i]):
+                    self.map_pieces[bomb.x + i].y = math.sqrt(b.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
+                if b.exp_collision(self.map_pieces[bomb.x - i]):
+                    self.map_pieces[bomb.x - i].y = math.sqrt(b.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
 
 
 # player class inherits gameobject class
@@ -156,7 +156,7 @@ class Player(GameObject):
         return output_tuple
 
 
-# Bomb class.
+# Bomb class
 class Bomb(GameObject):
 
     def __init__(self, x, y, width, height, color, dx, dy):

@@ -4,7 +4,7 @@ import random
 def randomise(terms):
     for i in range(len(terms)):
         terms[i] = random.randint(
-            550, 700
+            450, 700
         )  # these parameters control y variable of terrain
 
 
