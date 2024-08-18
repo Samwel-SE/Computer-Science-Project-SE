@@ -43,13 +43,25 @@ class Map:
         self.colour = colour
         self.y = perlinnoise.generate(self.screen_width, self.smoothness)
         self.map_pieces = []
+        self.piece_width = 700
 
         for i in range(self.screen_width):
-            self.map_pieces.append(GameObject(i, self.y[i], 1, 700, self.colour))
+            self.map_pieces.append(
+                GameObject(i, self.y[i], 1, self.piece_width, self.colour)
+            )
 
     def draw(self):
         for i in range(self.screen_width):
             self.map_pieces[i].draw()
+
+    def terrain_damgage(self, bomb):
+        if b.exp_collision(self.map_pieces[bomb.x]):
+            self.map_pieces[bomb.x].y += b.exp_rad
+        for i in range(1, bomb.exp_rad):
+            if b.exp_collision(self.map_pieces[bomb.x + i]):
+                self.map_pieces[bomb.x + i].y += math.sqrt(b.exp_rad**2 - i**2)
+            if b.exp_collision(self.map_pieces[bomb.x - i]):
+                self.map_pieces[bomb.x - i].y += math.sqrt(b.exp_rad**2 - i**2)
 
 
 # player class inherits gameobject class
@@ -76,7 +88,7 @@ class Player(GameObject):
     def draw(self):
         super().draw()
 
-        # draws player1 cursor
+        # draws players cursor
         pygame.draw.line(
             DISPLAYSURF,
             red,
@@ -151,7 +163,7 @@ class Bomb(GameObject):
         super().__init__(x, y, width, height, color)
         self.dx = round(dx)
         self.dy = round(dy)
-        self.exp_rad = 49
+        self.exp_rad = 50
 
     def move(self):
         self.x += self.dx
@@ -166,9 +178,7 @@ class Bomb(GameObject):
 
     # exp_collision function if for collisions between the circler explosion and other objects
     def exp_collision(self, obj2):
-        if (self.x) ** 2 + (self.y) ** 2 - self.exp_rad >= abs(
-            obj2.x / obj2.width + obj2.y / obj2.height
-        ) + abs(obj2.x / obj2.width - obj2.y / obj2.height) - 2:
+        if (self.x - obj2.x) ** 2 + (self.y - obj2.y) ** 2 <= self.exp_rad**2:
             return True
 
 
@@ -182,12 +192,14 @@ green = (0, 100, 10)
 # pygame initialisation
 pygame.init()
 
-DISPLAYSURF = pygame.display.set_mode((1500, 800), pygame.FULLSCREEN)
+# surface object
+DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
 DISPLAYSURF.fill(black)
 
-
 # creates procedurally generated terrain, parameters are: screen width and smoothness of terrain
-terr = Map(DISPLAYSURF.get_width(), random.randint(50, 80), green)
+terr = Map(DISPLAYSURF.get_width(), random.randint(35, 60), green)
+# line below for testing explosions
+# terr = Map(DISPLAYSURF.get_width(), 100, green)
 
 # game objects: parameters are, in order (x, y, width, height, colour)
 l_wall = GameObject(-99, 0, 100, 1000, blue)
@@ -202,20 +214,18 @@ pygame.display.set_caption("Bomber Bros")
 # stops player from seeing mouse cursor
 pygame.mouse.set_visible(False)
 
-# game loop
+# update loop ------------------------------------------------------------------------------------------------->
 while True:
+
+    # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)
+
+    # gets key preses and button presses
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
         player1.inputs()
-
-    # player collision with game boundaries
-    if player1.collision(l_wall):
-        player1.x = 3
-    elif player1.collision(r_wall):
-        player1.x = DISPLAYSURF.get_width() - 9
 
     # below is code that prevents player from moving when certain parts of the terrain are too high for the player to traverse without jumping
     if terr.map_pieces[player1.x + 8].y < player1.y - 3:
@@ -230,9 +240,11 @@ while True:
     if player1.movement[1]:
         player1.x -= 3
 
-    # bomb movement
-    for i in player1.bombs:
-        i.move()
+    # player collision with game boundaries
+    if player1.collision(l_wall):
+        player1.x = 3
+    elif player1.collision(r_wall):
+        player1.x = DISPLAYSURF.get_width() - 9
 
     # player collision with ground: checks if any bottom corner pixels player overlapping with terrain
     if player1.collision(terr.map_pieces[player1.x]):
@@ -244,9 +256,14 @@ while True:
         player1.jumping = False
         player1.jump_vel = player1.jump_height
 
+    # bomb movement
+    for i in player1.bombs:
+        i.move()
+
     # game objects drawn here
     terr.draw()
     player1.draw()
+
     # walls can be drawn for testing collision
     # r_wall.draw()
     # l_wall.draw()
@@ -254,18 +271,15 @@ while True:
     # draws bombs once the player has pressed the mouse
     for b in player1.bombs:
         b.draw()
+        # checks for collision between bombs with walls and terrain
+        if b.collision(r_wall) or b.collision(l_wall):
+            b.explode()
+            player1.bombs.pop()
 
-        try:
-            # checks for collision between bombs with walls and terrain
-            if (
-                b.collision(r_wall)
-                or b.collision(l_wall)
-                or b.collision(terr.map_pieces[round(b.x)])
-            ):
-                b.explode()
-                player1.bombs.pop()
-        except:
+        elif b.collision(terr.map_pieces[round(b.x)]):
+            b.explode()
+            terr.terrain_damgage(b)
             player1.bombs.pop()
 
     pygame.display.flip()
-    Clock.tick(120)
+    Clock.tick(60)
