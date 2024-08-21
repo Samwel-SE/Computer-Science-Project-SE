@@ -37,15 +37,17 @@ class Map:
         self.screen_width = screen_width + 100
         self.smoothness = smoothness
         self.colour = colour
-        self.y = perlinnoise.generate(self.screen_width, self.smoothness)
         self.map_pieces = []
         self.piece_width = 700
 
+    # uses perlin noise script to generate the map
+    def generate_map(self):
+        self.map_pieces.clear()
+        y_vars = perlinnoise.generate(self.screen_width, random.randint(30, 40))
         for i in range(self.screen_width):
-            self.map_pieces.append(
-                GameObject(i, self.y[i], 1, self.piece_width, self.colour)
-            )
+            self.map_pieces.append(GameObject(i, y_vars[i], 1, self.piece_width, self.colour))
 
+    # iterates through and draws all the gameobjects making up the map
     def draw(self):
         for i in range(self.screen_width):
             self.map_pieces[i].draw()
@@ -175,9 +177,7 @@ class Bomb(GameObject):
 
     # on collision with terrain bomb will explode calling explode function, explosion can damage player and and destroy terrain.
     def explode(self):
-        pygame.draw.circle(
-            DISPLAYSURF, (255, 155, 0), (self.x + 1, self.y + 1), self.exp_rad
-        )
+        pygame.draw.circle(DISPLAYSURF, (255, 155, 0), (self.x + 1, self.y + 1), self.exp_rad)
 
     # exp_collision function if for collisions between the circler explosion and other objects
     def exp_collision(self, obj2):
@@ -210,6 +210,7 @@ the_font = pygame.font.SysFont("Arial", 10)
 
 # creates procedurally generated terrain, parameters are: screen width and smoothness of terrain
 terr = Map(DISPLAYSURF.get_width(), random.randint(35, 60), green)
+terr.generate_map()
 # line below for testing explosions
 # terr = Map(DISPLAYSURF.get_width(), 100, green)
 
@@ -252,8 +253,6 @@ while True:
         if pause and event.type == count_down:
             counter -= 1 
             text = "Blue Wins. Next Round Begins " + str(counter)
-
-            print("test")
             if counter == 0: 
                 pygame.time.set_timer(pygame.USEREVENT, 1)
                 pause, player1.y, player1.colour, text = False, 300, red, ""
@@ -320,7 +319,7 @@ while True:
             if b.exp_collision(player1) or b.exp_collision(player1):
                 player1.lives -= 1
                 pause, player1.colour, player1.x, player1.y, text = True, black, 300, -1000, "Blue Wins. Next Round Begins " + str(counter)
-
+                terr.generate_map()
         
     pygame.display.update(pygame.Rect(0, 0, DISPLAYSURF.get_width(), 10))
     pygame.display.update(pygame.Rect(0, 10, DISPLAYSURF.get_width(), DISPLAYSURF.get_height()))
