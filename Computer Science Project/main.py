@@ -6,11 +6,11 @@ import pygame
 from pygame.locals import QUIT
 
 
-# imports script I wrote for procedural generation
+# imports 1d Perlin Noise generation script I wrote to generate the maps
 import perlinnoise
 
 
-# game object class, to be inherited by all other classes, apart from player cursor which uses pygame line function
+# game object class, to be inherited by all other classes
 class GameObject:
 
     def __init__(self, x, y, width, height, colour):
@@ -30,12 +30,11 @@ class GameObject:
             return True
 
 
-# map class
+# Map class
 class Map:
 
-    def __init__(self, screen_width, smoothness, colour):
+    def __init__(self, screen_width, colour):
         self.screen_width = screen_width + 100
-        self.smoothness = smoothness
         self.colour = colour
         self.map_pieces = []
         self.piece_width = 700
@@ -44,6 +43,8 @@ class Map:
     def generate_map(self):
         self.map_pieces.clear()
         y_vars = perlinnoise.generate(self.screen_width, random.randint(30, 40))
+        # y_vars = perlinnoise.generate(self.screen_width, 100)  <--- Used for testing certain bombs on flat terrain
+        
         for i in range(self.screen_width):
             self.map_pieces.append(GameObject(i, y_vars[i], 1, self.piece_width, self.colour))
 
@@ -53,15 +54,14 @@ class Map:
             self.map_pieces[i].draw()
 
     def terrain_damgage(self, bomb):
-        if b.exp_collision(self.map_pieces[bomb.x]):
-            self.map_pieces[bomb.x].y += b.exp_rad
-            for i in range(1, bomb.exp_rad):
-                if self.map_pieces[bomb.x +i].y > math.sqrt(b.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49):
-                    break
-                if b.exp_collision(self.map_pieces[bomb.x + i]):
-                    self.map_pieces[bomb.x + i].y = math.sqrt(b.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
-                if b.exp_collision(self.map_pieces[bomb.x - i]):
-                    self.map_pieces[bomb.x - i].y = math.sqrt(b.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
+        self.map_pieces[bomb.x].y += bomb.exp_rad
+        for i in range(1, bomb.exp_rad):
+            if self.map_pieces[bomb.x +i].y > math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49):
+                break
+            if bomb.exp_collision(self.map_pieces[bomb.x + i]):
+                self.map_pieces[bomb.x + i].y = math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
+            if bomb.exp_collision(self.map_pieces[bomb.x - i]):
+                self.map_pieces[bomb.x - i].y = math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
 
 
 # player class inherits gameobject class
@@ -88,7 +88,7 @@ class Player(GameObject):
         self.lives = 3
 
         # current weapon
-        self.weapons = ["Bounce", "Splinter", "Homing"]
+        self.weapons = ["Bounce", "Splinter", "Guided"]
         self.current_weapon = 0
 
     # adds drawing player cursor, life count and currently equipped weapon
@@ -99,7 +99,7 @@ class Player(GameObject):
         pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.get_cursor(pygame.mouse.get_pos()),1)
 
         #draws player live count
-        for i in range(1, self.lives+1):
+        for i in range(self.lives):
             pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(i*10, 0, 5, 10))
 
         # shows currently equipped weapon at the top of the screen
@@ -145,23 +145,24 @@ class Player(GameObject):
 
     # gets coordinates of line making up player cursor
     def get_cursor(self, cursor_tuple):
-        output_tuple = [0, 0]
-        if cursor_tuple[0] >= (self.x + 2):
-            output_tuple[0] = self.x + (cursor_tuple[0] - self.x) * 0.08 * 0.5
-            self.bomb_dx = output_tuple[0] - self.x
-        else:
-            output_tuple[0] = self.x - (self.x - cursor_tuple[0]) * 0.08 * 0.5
-            self.bomb_dx = output_tuple[0] - self.x
-        if cursor_tuple[1] <= (self.y + 2):
-            output_tuple[1] = self.y - (self.y - cursor_tuple[1]) * 0.08 * 0.5
-            self.bomb_dy = output_tuple[1] - self.y
-        else:
-            output_tuple[1] = self.y + (cursor_tuple[1] - self.y) * 0.08 * 0.5
-            self.bomb_dy = output_tuple[1] - self.y
-        return output_tuple
+        # diff dict stores the difference in x & y between cursor pos and mouse pos
+        diff = {"x": abs(cursor_tuple[0] -self.x) *0.04, "y": abs(cursor_tuple[1] -self.y) *0.04}
+        
+        if cursor_tuple[0] >= (self.x + 2): 
+           self.bomb_dx = diff["x"]
+        else: 
+            self.bomb_dx = -diff["x"]
+
+        if cursor_tuple[1] <= (self.y + 2): 
+            self.bomb_dy = -diff["y"]
+        else: 
+            self.bomb_dy = diff["y"]
+        
+
+        return [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
 
 
-# Bomb class
+# Bomb class, inherits Game Object Class
 class Bomb(GameObject):
 
     def __init__(self, x, y, width, height, colour, dx, dy):
@@ -169,28 +170,31 @@ class Bomb(GameObject):
         self.dx = round(dx)
         self.dy = round(dy)
         self.exp_rad = 50
+        self.bounces = 3
 
+    # movement of the bomb
     def move(self):
-        self.x += self.dx
-        self.y += self.dy
+        self.x += round(self.dx)
+        self.y += round(self.dy)
         self.dy += 1
+    
+    # bounce function when bounces are greater than 0, dx and dy decrease to mimic how a ball would bounce
+    def bounce(self):
+        self.dx = self.dx * 0.7
+        self.dy = -(self.dy) * 0.7
+        self.bounces -= 1
 
-    # on collision with terrain bomb will explode calling explode function, explosion can damage player and and destroy terrain.
+    # draws the expxlosion of the bomb
     def explode(self):
         pygame.draw.circle(DISPLAYSURF, (255, 155, 0), (self.x + 1, self.y + 1), self.exp_rad)
 
-    # exp_collision function if for collisions between the circler explosion and other objects
+    # checks whether points of other objects overlap with explosion, returning True or False
     def exp_collision(self, obj2):
-        if (self.x - obj2.x) ** 2 + (self.y - obj2.y) ** 2 <= self.exp_rad**2:
+        if ((self.x -1)- obj2.x) ** 2 + ((self.y +1) - obj2.y) ** 2 <= self.exp_rad**2:
             return True
 
-class Splinter(Bomb):
 
-    def __init__(self, x, y, width, height, color):
-        super().__init(x, y, width, height, color)
-
-
-# colours
+# colours, represented by RGB colour codes stored as tuples
 black = (0, 0, 0)
 red = (255, 0, 0)
 blue = (0, 0, 255)
@@ -208,12 +212,12 @@ DISPLAYSURF.fill(black)
 pygame.font.init ()
 the_font = pygame.font.SysFont("Arial", 10)
 
-# creates procedurally generated terrain, parameters are: screen width and smoothness of terrain
-terr = Map(DISPLAYSURF.get_width(), random.randint(35, 60), green)
-terr.generate_map()
-# line below for testing explosions
-# terr = Map(DISPLAYSURF.get_width(), 100, green)
 
+# terr is the map object
+terr = Map(DISPLAYSURF.get_width(), green)
+
+# the function below uses the 1d perlin noise generation script to create bumps and grooves in terrain
+terr.generate_map()
 # game objects: parameters are, in order (x, y, width, height, colour)
 l_wall = GameObject(-99, 0, 100, 1000, blue)
 r_wall = GameObject(DISPLAYSURF.get_width(), 0, 100, 1000, blue)
@@ -238,7 +242,7 @@ counter = 3 #counter for seconds on the timer
 # text displayed in the middle of the screen upon round and game end
 text = ""
 
-# update loop ------------------------------------------------------------------------------------------------->
+# update loop ---------------------------------------------------------------------------------------------------------------------------------->
 while True:
     # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)
@@ -249,14 +253,21 @@ while True:
             pygame.quit()
             sys.exit()
         
-        # checks if pause is enabled
+        # checks if pause is enabled, if it is a 3 second count down begins
         if pause and event.type == count_down:
             counter -= 1 
             text = "Blue Wins. Next Round Begins " + str(counter)
-            if counter == 0: 
+            player1.movement = [False, False]
+
+            # once the countdown ends following code is ran
+            if counter == 0:    
                 pygame.time.set_timer(pygame.USEREVENT, 1)
-                pause, player1.y, player1.colour, text = False, 300, red, ""
+                pause, text = False, ""
+                player1.x, player1.y, player1.colour, = 300, 300, red, 
                 counter = 3
+                terr.generate_map()
+                
+        # disables player inputs whilst the countdown is happening        
         if not(pause):
             player1.inputs()
 
@@ -280,12 +291,8 @@ while True:
         player1.x = DISPLAYSURF.get_width() - 9
 
     # player collision with ground: checks if any bottom corner pixels player overlapping with terrain
-    if player1.collision(terr.map_pieces[player1.x]):
+    if player1.collision(terr.map_pieces[player1.x]) or player1.collision(terr.map_pieces[player1.x + player1.width]):
         player1.y = terr.map_pieces[player1.x].y - 5
-        player1.jumping = False
-        player1.jump_vel = player1.jump_height
-    elif player1.collision(terr.map_pieces[player1.x + player1.width]):
-        player1.y = terr.map_pieces[player1.x + player1.width].y - 5
         player1.jumping = False
         player1.jump_vel = player1.jump_height
 
@@ -313,14 +320,17 @@ while True:
             player1.bombs.pop()
 
         elif b.collision(terr.map_pieces[round(b.x)]):
-            b.explode()
-            terr.terrain_damgage(b)
-            player1.bombs.pop()
-            if b.exp_collision(player1) or b.exp_collision(player1):
-                player1.lives -= 1
-                pause, player1.colour, player1.x, player1.y, text = True, black, 300, -1000, "Blue Wins. Next Round Begins " + str(counter)
-                terr.generate_map()
-        
+            if b.bounces > 0:
+                b.bounce()
+            else:
+                b.explode()
+                player1.bombs.pop()
+                terr.terrain_damgage(b)
+                if b.exp_collision(player1) or b.exp_collision(player1):
+                    player1.lives -= 1
+                    print(player1.lives)
+                    pause, player1.colour, player1.x, player1.y, text = True, black, 300, -1000, "Blue Wins. Next Round Begins " + str(counter)
+                
     pygame.display.update(pygame.Rect(0, 0, DISPLAYSURF.get_width(), 10))
     pygame.display.update(pygame.Rect(0, 10, DISPLAYSURF.get_width(), DISPLAYSURF.get_height()))
     Clock.tick(60)
