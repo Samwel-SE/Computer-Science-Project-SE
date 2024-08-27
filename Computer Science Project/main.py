@@ -5,6 +5,7 @@ import math
 import pygame
 from pygame.locals import QUIT
 
+from network import Network
 
 # imports 1d Perlin Noise generation script I wrote to generate the maps
 import perlinnoise
@@ -20,6 +21,7 @@ class GameObject:
         self.height = height
         self.colour = colour
 
+    # draws the gameobject 
     def draw(self):
         pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height))
 
@@ -66,7 +68,7 @@ class Map:
 
 # player class inherits gameobject class
 class Player(GameObject):
-
+    
     def __init__(self, x, y, width, height, colour):
         super().__init__(x, y, width, height, colour)
 
@@ -100,7 +102,7 @@ class Player(GameObject):
 
         #draws player live count
         for i in range(self.lives):
-            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(i*10, 0, 5, 10))
+            pygame.draw.rect(DISPLAYSURF, red, pygame.Rect(i*10, 0, 5, 10))
 
         # shows currently equipped weapon at the top of the screen
         if self.current_weapon > 2:
@@ -205,7 +207,9 @@ green = (0, 100, 10)
 pygame.init()
 
 # surface object
-DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
+# DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
+DISPLAYSURF = pygame.display.set_mode((600, 800)) 
+# fullscreen off above for testing the multiplayer  
 DISPLAYSURF.fill(black)
 
 # initialises the font to be used
@@ -222,9 +226,33 @@ terr.generate_map()
 l_wall = GameObject(-99, 0, 100, 1000, blue)
 r_wall = GameObject(DISPLAYSURF.get_width(), 0, 100, 1000, blue)
 
-# player object
-player1 = Player(300, 300, 5, 5, red)
 
+# helper functions for getting data from the server
+
+def read_pos(str):
+    str = str.split(",")
+    return int(str[0]), int(str[1])
+
+
+def make_pos(tup):
+    return str(tup[0]) + "," + str(tup[1])
+
+# Networking
+n = Network()
+startpos = read_pos(n.getPos()) # will come as tuple
+
+# chooses the player colour based on if the player connected first
+if n.id == "0":
+    player_colour = red
+    other_player_colour = blue
+else:
+    player_colour = blue
+    other_player_colour = red
+
+# player object
+player1 = Player(startpos[0], startpos[1], 5, 5, player_colour)
+
+player2 = Player(0, 0, 5, 5, other_player_colour)
 Clock = pygame.time.Clock()
 pygame.display.set_caption("Bomber Bros")
 
@@ -284,6 +312,11 @@ while True:
     if player1.movement[1]:
         player1.x -= 3
 
+
+    # movement for player 2 
+    player2Pos = read_pos(n.send(make_pos((round(player1.x), round(player1.y)))))
+    player2.x, player2.y = player2Pos[0], player2Pos[1]
+
     # player collision with game boundaries
     if player1.collision(l_wall):
         player1.x = 3
@@ -303,6 +336,7 @@ while True:
     # game objects drawn here
     terr.draw()
     player1.draw()
+    player2.draw()
 
     # draws text
     DISPLAYSURF.blit(the_font.render(text, False, blue), (400, 250))
