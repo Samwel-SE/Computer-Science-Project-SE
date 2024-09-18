@@ -4,7 +4,9 @@ class Network:
 
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = "192.168.1.172"
+        self.server = "192.168.1.174"
+        #hotspot IP below
+        self.server = "172.20.10.3"
         self.port = 5555
         self.addr = (self.server, self.port)
         data = self.connect() #connect can only be called once

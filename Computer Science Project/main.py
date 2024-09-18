@@ -11,6 +11,7 @@ from network import Network
 import perlinnoise
 
 
+
 # game object class, to be inherited by all other classes
 class GameObject:
 
@@ -26,10 +27,16 @@ class GameObject:
         pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height))
 
     def collision(self, obj2):
-        if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) and (
-            self.y + self.height > obj2.y and self.y < obj2.y + obj2.height
-        ):
+        if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) and (self.y + self.height > obj2.y and self.y < obj2.y + obj2.height):
             return True
+
+    #gets object position
+    def get_pos(self):
+        return self.x, self.y
+    
+    #sets object position
+    def set_pos(self, pos):
+        self.x, self.y = pos[0], pos[1]
 
 
 # Map class
@@ -39,16 +46,20 @@ class Map:
         self.screen_width = screen_width + 100
         self.colour = colour
         self.map_pieces = []
+
+        # stores y variables of all the objects making up the map
+        self.y_vars = 0
+        
         self.piece_width = 700
 
     # uses perlin noise script to generate the map
     def generate_map(self):
         self.map_pieces.clear()
-        y_vars = perlinnoise.generate(self.screen_width, random.randint(30, 40))
-        # y_vars = perlinnoise.generate(self.screen_width, 100)  <--- Used for testing certain bombs on flat terrain
+        # parameters below width: for how long 1d perlin noise is and how many times the perlin noise is smoothed
+        self.y_vars = perlinnoise.generate(self.screen_width, random.randint(30, 40))
         
         for i in range(self.screen_width):
-            self.map_pieces.append(GameObject(i, y_vars[i], 1, self.piece_width, self.colour))
+            self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_width, self.colour))
 
     # iterates through and draws all the gameobjects making up the map
     def draw(self):
@@ -66,6 +77,7 @@ class Map:
                 self.map_pieces[bomb.x - i].y = math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
 
 
+
 # player class inherits gameobject class
 class Player(GameObject):
     
@@ -73,21 +85,26 @@ class Player(GameObject):
         super().__init__(x, y, width, height, colour)
 
         # movement tuple's bool's change when a and d keys pressed, if true the player will move left or right
-        self.movement = [False, False]
+        self.move_right = False
+        self.move_left = False
+
+        #cursor position
+        self.cursor_pos = [0,0]
 
         # jumping is true when player is not touching the ground
         self.jumping = False
         self.jump_vel = 12
         self.jump_height = 12
-
         # bombs object array
         self.bombs = []
         # bullet direction x and y
         self.bomb_dx = 0
         self.bomb_dy = 0
 
-        # player life count
-        self.lives = 3
+        # player life count in tuple with buffer which will mean life count for players will be in different places
+        self.lives = [3, 0]
+        if self.colour == red: self.lives[1] = 0 
+        else: self.lives[1] = DISPLAYSURF.get_width() - 80
 
         # current weapon
         self.weapons = ["Bounce", "Splinter", "Guided"]
@@ -98,24 +115,24 @@ class Player(GameObject):
         super().draw()
 
         # draws players cursor
-        pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.get_cursor(pygame.mouse.get_pos()),1)
+        pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.cursor_pos,1)
 
         #draws player live count
-        for i in range(self.lives):
-            pygame.draw.rect(DISPLAYSURF, red, pygame.Rect(i*10, 0, 5, 10))
+        for i in range(self.lives[0]):
+            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives[1] + i*10, 0, 5, 10))
 
         # shows currently equipped weapon at the top of the screen
         if self.current_weapon > 2:
             self.current_weapon = 0
-        DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, red), (40, 0))
+        DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, self.colour), (self.lives[1]+ 40, 0))
 
     # gets keys currently pressed so player character can move
     def inputs(self):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_d:
-                self.movement[0] = True
+                self.move_right = True
             if event.key == pygame.K_a:
-                self.movement[1] = True
+                self.move_left = True
             if event.key == pygame.K_w and self.jumping == False:
                 self.jumping = True
 
@@ -125,9 +142,9 @@ class Player(GameObject):
         
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_d:
-                self.movement[0] = False
+                self.move_right = False
             if event.key == pygame.K_a:
-                self.movement[1] = False
+                self.move_left = False
 
         # Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object,
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -160,8 +177,9 @@ class Player(GameObject):
         else: 
             self.bomb_dy = diff["y"]
         
-
+        self.cursor_pos = [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
         return [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
+
 
 
 # Bomb class, inherits Game Object Class
@@ -196,6 +214,110 @@ class Bomb(GameObject):
             return True
 
 
+
+#all other objects are manipulated through the game object
+class Game:
+
+    def __init__(self, player, other_player, map):
+        
+        #player objects
+        self.player = player
+        self.other_player = other_player
+
+        #map object
+        self.map = map
+
+        #boundary objects
+        self.l_wall = GameObject(-99, 0, 100, 1000, blue)
+        self.r_wall = GameObject(DISPLAYSURF.get_width(), 0, 100, 1000, blue)
+
+        self.pause = 3
+        self.text = ""
+
+
+    def getsInputs(self):
+        self.player.inputs()
+
+
+    def update(self):
+    # updates clients player ------------------------------------------------------------------------------------------------------->
+        #checks if there are obstructions to player movement
+        if (self.player.y > self.map.map_pieces[self.player.x -3].y) or self.player.collision(self.l_wall):
+            self.player.move_left = False 
+            
+        if (self.player.y > self.map.map_pieces[self.player.x +8].y) or self.player.collision(self.r_wall):
+            self.player.move_right = False
+
+        #jump command for player 
+        self.player.jump()
+        #moves player left and right
+        if self.player.move_right:
+            self.player.x += 3
+        if self.player.move_left:
+            self.player.x -= 3  
+
+        if player1.collision(terr.map_pieces[player1.x]) or player1.collision(terr.map_pieces[player1.x + player1.width]):
+            player1.y = terr.map_pieces[player1.x].y - 5
+            player1.jumping = False
+            player1.jump_vel = player1.jump_height
+
+    # updates the other clients player
+        self.other_player.get_cursor([self.other_player.x, self.other_player.y])
+        self.other_player.set_pos(read_pos( n.send( make_pos( (round(player1.x), round(player1.y)) ) ) ) )
+        
+    
+    # updates bomb ----------------------------------------------------------------------------------------------------------------->
+        #gets the pos of player cursor to aim bombs
+        self.player.get_cursor(pygame.mouse.get_pos())
+
+        for player in [self.player, self.other_player]:
+            for bomb in player.bombs:
+                bomb.move()
+
+                if bomb.collision(self.r_wall) or bomb.collision(self.l_wall):
+                    bomb.explode()
+                    player.bombs.pop()
+
+                elif bomb.collision(terr.map_pieces[round(bomb.x)]):
+                    if bomb.bounces > 0:
+                        bomb.bounce()
+                    else:
+                        bomb.explode()
+                        player.bombs.pop()
+                        self.map.terrain_damgage(bomb)
+    
+                if bomb.exp_collision(self.player):
+                    self.player.lives[0] -= 1
+
+
+    def draw(self):
+        #draws player objects and map
+        self.map.draw()
+        self.player.draw()
+        self.other_player.draw()
+       
+        #draws bomb objects
+        for player in [self.player, self.other_player]:
+            for bomb in player.bombs:
+                bomb.draw()
+
+
+    def start_round(self):
+        self.map.generate()
+        self.player.roundstart()
+        self.other_player.roundstart()
+    
+    def end_round(self):
+        self.pause = 3
+        self.text = self.winner + " has won the round. Restarting in " + str(self.pause) 
+        #timer()
+
+    def end_game(self):
+        self.pause = 5
+        self.text = self.winner + " has won the game. Returning to Title Screen " + str(self.pause)
+        #timer()
+
+
 # colours, represented by RGB colour codes stored as tuples
 black = (0, 0, 0)
 red = (255, 0, 0)
@@ -206,7 +328,6 @@ green = (0, 100, 10)
 # pygame initialisation
 pygame.init()
 
-# surface object
 # DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
 DISPLAYSURF = pygame.display.set_mode((600, 800)) 
 # fullscreen off above for testing the multiplayer  
@@ -216,30 +337,17 @@ DISPLAYSURF.fill(black)
 pygame.font.init ()
 the_font = pygame.font.SysFont("Arial", 10)
 
-
-# terr is the map object
-terr = Map(DISPLAYSURF.get_width(), green)
-
-# the function below uses the 1d perlin noise generation script to create bumps and grooves in terrain
-terr.generate_map()
-# game objects: parameters are, in order (x, y, width, height, colour)
-l_wall = GameObject(-99, 0, 100, 1000, blue)
-r_wall = GameObject(DISPLAYSURF.get_width(), 0, 100, 1000, blue)
-
-
 # helper functions for getting data from the server
-
 def read_pos(str):
     str = str.split(",")
     return int(str[0]), int(str[1])
-
 
 def make_pos(tup):
     return str(tup[0]) + "," + str(tup[1])
 
 # Networking
 n = Network()
-startpos = read_pos(n.getPos()) # will come as tuple
+startpos = read_pos(n.getPos()) # player position will come as a tuple
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":
@@ -249,28 +357,24 @@ else:
     player_colour = blue
     other_player_colour = red
 
-# player object
+# player objects
 player1 = Player(startpos[0], startpos[1], 5, 5, player_colour)
-
 player2 = Player(0, 0, 5, 5, other_player_colour)
-Clock = pygame.time.Clock()
-pygame.display.set_caption("Bomber Bros")
+
+
+# terr is the map object
+terr = Map(DISPLAYSURF.get_width(), green)
+terr.generate_map()
+
 
 # stops player from seeing mouse cursor
 pygame.mouse.set_visible(False)
 
-# count down is used to count down seconds after player death till player respawn
-count_down = pygame.event.custom_type()
-pygame.time.set_timer(count_down, 1000)
+game = Game(player1, player2, terr)
 
-# pause to allow game to begin countdown upon player death
-pause = False
-counter = 3 #counter for seconds on the timer
+Clock = pygame.time.Clock()
 
-# text displayed in the middle of the screen upon round and game end
-text = ""
-
-# update loop ---------------------------------------------------------------------------------------------------------------------------------->
+# update loop --------------------------------------------------------------------------------------------------------------------------------------------->
 while True:
     # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)
@@ -280,91 +384,11 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-        
-        # checks if pause is enabled, if it is a 3 second count down begins
-        if pause and event.type == count_down:
-            counter -= 1 
-            text = "Blue Wins. Next Round Begins " + str(counter)
-            player1.movement = [False, False]
+        game.getsInputs()
 
-            # once the countdown ends following code is ran
-            if counter == 0:    
-                pygame.time.set_timer(pygame.USEREVENT, 1)
-                pause, text = False, ""
-                player1.x, player1.y, player1.colour, = 300, 300, red, 
-                counter = 3
-                terr.generate_map()
-                
-        # disables player inputs whilst the countdown is happening        
-        if not(pause):
-            player1.inputs()
-
-    # below is code that prevents player from moving when certain parts of the terrain are too high for the player to traverse without jumping
-    if terr.map_pieces[player1.x + 8].y < player1.y - 3:
-        player1.movement[0] = False
-    if terr.map_pieces[player1.x - 3].y < player1.y - 3:
-        player1.movement[1] = False
-
-    # player movement
-    player1.jump()
-    if player1.movement[0]:
-        player1.x += 3
-    if player1.movement[1]:
-        player1.x -= 3
+    game.update()
+    game.draw()
 
 
-    # movement for player 2 
-    player2Pos = read_pos(n.send(make_pos((round(player1.x), round(player1.y)))))
-    player2.x, player2.y = player2Pos[0], player2Pos[1]
-
-    # player collision with game boundaries
-    if player1.collision(l_wall):
-        player1.x = 3
-    elif player1.collision(r_wall):
-        player1.x = DISPLAYSURF.get_width() - 9
-
-    # player collision with ground: checks if any bottom corner pixels player overlapping with terrain
-    if player1.collision(terr.map_pieces[player1.x]) or player1.collision(terr.map_pieces[player1.x + player1.width]):
-        player1.y = terr.map_pieces[player1.x].y - 5
-        player1.jumping = False
-        player1.jump_vel = player1.jump_height
-
-    # bomb movement
-    for i in player1.bombs:
-        i.move()
-
-    # game objects drawn here
-    terr.draw()
-    player1.draw()
-    player2.draw()
-
-    # draws text
-    DISPLAYSURF.blit(the_font.render(text, False, blue), (400, 250))
-
-    # walls can be drawn for testing collision
-    # r_wall.draw()
-    # l_wall.draw()
-
-    # draws bombs once the player has pressed the mouse
-    for b in player1.bombs:
-        b.draw()
-        # checks for collision between bombs with walls and terrain
-        if b.collision(r_wall) or b.collision(l_wall):
-            b.explode()
-            player1.bombs.pop()
-
-        elif b.collision(terr.map_pieces[round(b.x)]):
-            if b.bounces > 0:
-                b.bounce()
-            else:
-                b.explode()
-                player1.bombs.pop()
-                terr.terrain_damgage(b)
-                if b.exp_collision(player1) or b.exp_collision(player1):
-                    player1.lives -= 1
-                    print(player1.lives)
-                    pause, player1.colour, player1.x, player1.y, text = True, black, 300, -1000, "Blue Wins. Next Round Begins " + str(counter)
-                
-    pygame.display.update(pygame.Rect(0, 0, DISPLAYSURF.get_width(), 10))
-    pygame.display.update(pygame.Rect(0, 10, DISPLAYSURF.get_width(), DISPLAYSURF.get_height()))
+    pygame.display.flip()
     Clock.tick(60)

@@ -2,7 +2,10 @@ import socket
 from _thread import *
 import sys
 
-server = "192.168.1.172"
+#server = "192.168.1.174" 
+# only use below if hotspotting
+server = "172.20.10.3"  
+
 port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
