@@ -1,10 +1,12 @@
 import socket
 from _thread import *
+import perlinnoise
+import random
 import sys
 
-#server = "192.168.1.174" 
+server = "192.168.1.173" 
 # only use below if hotspotting
-server = "172.20.10.3"  
+#server = "172.20.10.3"  
 
 port = 5555
 
@@ -31,17 +33,35 @@ def read_pos(str):
 def make_pos(tup):
     return str(tup[0]) + "," + str(tup[1])
 
-def make_data(tup, id):
-    return str(tup[0]) + "," + str(tup[1]) + str(id)
+def make_data(tup, id, map):
+    return str(id) + str(tup[0]) + "," + str(tup[1]) + make_map(map)
 
+
+# -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------
+# generates list of y variables for map pieces
+def generate_list():
+        y_list = perlinnoise.generate(1600, random.randint(50, 60))
+        return y_list
+
+def make_map(y_list):
+    encoded_string = ""
+    for i in y_list: encoded_string = encoded_string + str(i) + ","
+    encoded_string = encoded_string[:-1]
+    return encoded_string
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+temp_var = generate_list()
 
 def threaded_client(conn, player):
-    conn.send(str.encode(make_data(pos[player], player)))
+    conn.send( str.encode(make_data(pos[player], player, temp_var)) )
     reply = ""
-
+    
     while True:
         try:
-            data = read_pos(conn.recv(2048).decode())
+            data = read_pos(conn.recv(4096).decode())
             pos[player] = data
 
             if not(data):
@@ -52,8 +72,8 @@ def threaded_client(conn, player):
                     reply = pos[0]
                 else: 
                     reply = pos[1]
-                print("recieved: ", data)
-                print("Sending: ", reply)
+                #print("recieved: ", data)
+                #print("Sending: ", reply)
 
             conn.sendall(str.encode(make_pos(reply)))
 

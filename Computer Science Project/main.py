@@ -11,7 +11,6 @@ from network import Network
 import perlinnoise
 
 
-
 # game object class, to be inherited by all other classes
 class GameObject:
 
@@ -42,41 +41,33 @@ class GameObject:
 # Map class
 class Map:
 
-    def __init__(self, screen_width, colour):
-        self.screen_width = screen_width + 100
+    def __init__(self, colour):
+        self.screen_width = DISPLAYSURF.get_width()
         self.colour = colour
         self.map_pieces = []
 
         # stores y variables of all the objects making up the map
         self.y_vars = 0
-        
-        self.piece_width = 700
+        self.piece_length = 700
 
-    # uses perlin noise script to generate the map
-    def generate_map(self):
+    def generate_list(self):
+        self.y_vars = perlinnoise.generate(self.screen_width, random.randint(50, 60))
+
+    # creates map obj
+    def create_map_obj(self):
         self.map_pieces.clear()
-        # parameters below width: for how long 1d perlin noise is and how many times the perlin noise is smoothed
-        self.y_vars = perlinnoise.generate(self.screen_width, random.randint(30, 40))
-        
+        self.screen_width = len(self.y_vars)
+        print("Screen Length: " + str(self.screen_width))
         for i in range(self.screen_width):
-            self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_width, self.colour))
+            print(self.y_vars[i])
+            self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
+
+
 
     # iterates through and draws all the gameobjects making up the map
     def draw(self):
         for i in range(self.screen_width):
             self.map_pieces[i].draw()
-
-    def terrain_damgage(self, bomb):
-        self.map_pieces[bomb.x].y += bomb.exp_rad
-        for i in range(1, bomb.exp_rad):
-            if self.map_pieces[bomb.x +i].y > math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49):
-                break
-            if bomb.exp_collision(self.map_pieces[bomb.x + i]):
-                self.map_pieces[bomb.x + i].y = math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
-            if bomb.exp_collision(self.map_pieces[bomb.x - i]):
-                self.map_pieces[bomb.x - i].y = math.sqrt(bomb.exp_rad**2 - (i)**2) + (self.map_pieces[bomb.x].y -49)
-
-
 
 # player class inherits gameobject class
 class Player(GameObject):
@@ -100,11 +91,8 @@ class Player(GameObject):
         # bullet direction x and y
         self.bomb_dx = 0
         self.bomb_dy = 0
-
-        # player life count in tuple with buffer which will mean life count for players will be in different places
-        self.lives = [3, 0]
-        if self.colour == red: self.lives[1] = 0 
-        else: self.lives[1] = DISPLAYSURF.get_width() - 80
+        
+        self.lives = 3
 
         # current weapon
         self.weapons = ["Bounce", "Splinter", "Guided"]
@@ -118,13 +106,13 @@ class Player(GameObject):
         pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.cursor_pos,1)
 
         #draws player live count
-        for i in range(self.lives[0]):
-            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives[1] + i*10, 0, 5, 10))
+        for i in range(self.lives):
+            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10, 0, 5, 10))
 
         # shows currently equipped weapon at the top of the screen
         if self.current_weapon > 2:
             self.current_weapon = 0
-        DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, self.colour), (self.lives[1]+ 40, 0))
+        DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, self.colour), (self.lives, 0))
 
     # gets keys currently pressed so player character can move
     def inputs(self):
@@ -224,12 +212,12 @@ class Game:
         self.player = player
         self.other_player = other_player
 
-        #map object
+        #map objects
         self.map = map
 
         #boundary objects
-        self.l_wall = GameObject(-99, 0, 100, 1000, blue)
-        self.r_wall = GameObject(DISPLAYSURF.get_width(), 0, 100, 1000, blue)
+        self.l_wall = GameObject(10, 0, 1, 1000, blue)
+        self.r_wall = GameObject(DISPLAYSURF.get_width()-10, 0, 1, 1000, blue)
 
         self.pause = 3
         self.text = ""
@@ -240,12 +228,13 @@ class Game:
 
 
     def update(self):
+
     # updates clients player ------------------------------------------------------------------------------------------------------->
         #checks if there are obstructions to player movement
-        if (self.player.y > self.map.map_pieces[self.player.x -3].y) or self.player.collision(self.l_wall):
+        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.collision(self.l_wall):
             self.player.move_left = False 
             
-        if (self.player.y > self.map.map_pieces[self.player.x +8].y) or self.player.collision(self.r_wall):
+        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.collision(self.r_wall):
             self.player.move_right = False
 
         #jump command for player 
@@ -256,8 +245,8 @@ class Game:
         if self.player.move_left:
             self.player.x -= 3  
 
-        if player1.collision(terr.map_pieces[player1.x]) or player1.collision(terr.map_pieces[player1.x + player1.width]):
-            player1.y = terr.map_pieces[player1.x].y - 5
+        if player1.collision(self.map.map_pieces[player1.x]) or player1.collision(self.map.map_pieces[player1.x + player1.width]):
+            player1.y = self.map.map_pieces[player1.x].y - 5
             player1.jumping = False
             player1.jump_vel = player1.jump_height
 
@@ -278,16 +267,15 @@ class Game:
                     bomb.explode()
                     player.bombs.pop()
 
-                elif bomb.collision(terr.map_pieces[round(bomb.x)]):
+                elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
                     if bomb.bounces > 0:
                         bomb.bounce()
                     else:
                         bomb.explode()
                         player.bombs.pop()
-                        self.map.terrain_damgage(bomb)
     
                 if bomb.exp_collision(self.player):
-                    self.player.lives[0] -= 1
+                    self.player.lives -= 1
 
 
     def draw(self):
@@ -303,19 +291,27 @@ class Game:
 
 
     def start_round(self):
-        self.map.generate()
-        self.player.roundstart()
-        self.other_player.roundstart()
+        self.map.create_map_obj()
+
+        self.player.set_pos((100, 300))
+        self.other_player.set_pos((200, 300))
     
     def end_round(self):
         self.pause = 3
-        self.text = self.winner + " has won the round. Restarting in " + str(self.pause) 
+        self.text = self.winner + " has won the round. Restarting in "
         #timer()
 
     def end_game(self):
         self.pause = 5
-        self.text = self.winner + " has won the game. Returning to Title Screen " + str(self.pause)
+        self.text = self.winner + " has won the game. Returning to Title Screen in "
         #timer()
+    
+
+    def pause(self):
+        if self.pause:
+            pass
+
+
 
 
 # colours, represented by RGB colour codes stored as tuples
@@ -345,14 +341,25 @@ def read_pos(str):
 def make_pos(tup):
     return str(tup[0]) + "," + str(tup[1])
 
+def read_map(decoded_string):
+    y_variables = []
+    decoded_string = decoded_string.split(",")
+    for i in decoded_string:
+        y_variables.append(int(i))
+    return y_variables
+
+
 # Networking
 n = Network()
 startpos = read_pos(n.getPos()) # player position will come as a tuple
+y_list = read_map(n.getMap()) # map will come as large list
+
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":
     player_colour = red
     other_player_colour = blue
+
 else:
     player_colour = blue
     other_player_colour = red
@@ -363,16 +370,19 @@ player2 = Player(0, 0, 5, 5, other_player_colour)
 
 
 # terr is the map object
-terr = Map(DISPLAYSURF.get_width(), green)
-terr.generate_map()
-
+terr = Map(green)
+terr.y_vars = y_list
 
 # stops player from seeing mouse cursor
 pygame.mouse.set_visible(False)
 
 game = Game(player1, player2, terr)
 
+game.start_round()
+
 Clock = pygame.time.Clock()
+
+
 
 # update loop --------------------------------------------------------------------------------------------------------------------------------------------->
 while True:
