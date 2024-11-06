@@ -4,9 +4,9 @@ import perlinnoise
 import random
 import sys
 
-server = "192.168.1.173" 
-# only use below if hotspotting
-#server = "172.20.10.3"  
+#server = "192.168.1.173" 
+# only use below if on school wifi
+server = "172.17.126.26"  
 
 port = 5555
 

@@ -4,15 +4,15 @@ class Network:
 
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = "192.168.1.173"
-        #hotspot IP below
-        #self.server = "172.20.10.3"
+        # self.server = "192.168.1.173"
+        # school wifi IP below
+        self.server = "172.17.126.26"
         self.port = 5555
         self.addr = (self.server, self.port)
         data = self.connect() #connect can only be called once
-        self.pos = data[1:8] # gets the players x and y coords
+        self.pos = data[1:7] # gets the players x and y coords
         self.id = data[0] # gets whether player is player 1 or player 2
-        self.map = data[9:-1] # gets the map y variables for map pieces
+        self.map = data[8:-1] # gets the map y variables for map pieces
         print(self.id)
 
     def getPos(self):

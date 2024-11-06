@@ -50,16 +50,10 @@ class Map:
         self.y_vars = 0
         self.piece_length = 700
 
-    def generate_list(self):
-        self.y_vars = perlinnoise.generate(self.screen_width, random.randint(50, 60))
-
     # creates map obj
     def create_map_obj(self):
         self.map_pieces.clear()
-        self.screen_width = len(self.y_vars)
-        print("Screen Length: " + str(self.screen_width))
         for i in range(self.screen_width):
-            print(self.y_vars[i])
             self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
 
 
@@ -215,12 +209,11 @@ class Game:
         #map objects
         self.map = map
 
-        #boundary objects
-        self.l_wall = GameObject(10, 0, 1, 1000, blue)
-        self.r_wall = GameObject(DISPLAYSURF.get_width()-10, 0, 1, 1000, blue)
-
         self.pause = 3
         self.text = ""
+
+        self.screen_width = self.map.screen_width
+
 
 
     def getsInputs(self):
@@ -231,10 +224,10 @@ class Game:
 
     # updates clients player ------------------------------------------------------------------------------------------------------->
         #checks if there are obstructions to player movement
-        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.collision(self.l_wall):
+        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
             self.player.move_left = False 
             
-        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.collision(self.r_wall):
+        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
             self.player.move_right = False
 
         #jump command for player 
@@ -263,7 +256,8 @@ class Game:
             for bomb in player.bombs:
                 bomb.move()
 
-                if bomb.collision(self.r_wall) or bomb.collision(self.l_wall):
+                # collision for bombs and end of screen
+                if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0 or bomb.y >= DISPLAYSURF.get_height():
                     bomb.explode()
                     player.bombs.pop()
 
@@ -324,14 +318,20 @@ green = (0, 100, 10)
 # pygame initialisation
 pygame.init()
 
+
+
 # DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
 DISPLAYSURF = pygame.display.set_mode((600, 800)) 
 # fullscreen off above for testing the multiplayer  
 DISPLAYSURF.fill(black)
 
+
+
 # initialises the font to be used
 pygame.font.init ()
 the_font = pygame.font.SysFont("Arial", 10)
+
+
 
 # helper functions for getting data from the server
 def read_pos(str):
@@ -349,11 +349,12 @@ def read_map(decoded_string):
     return y_variables
 
 
+
 # Networking
 n = Network()
 startpos = read_pos(n.getPos()) # player position will come as a tuple
 y_list = read_map(n.getMap()) # map will come as large list
-
+print(y_list)
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":
@@ -361,6 +362,7 @@ if n.id == "0":
     other_player_colour = blue
 
 else:
+    startpos[0] += DISPLAYSURF.get_width() //2
     player_colour = blue
     other_player_colour = red
 
