@@ -21,20 +21,20 @@ except socket.error as e:
 s.listen(2)
 print("Waiting for connection, Server Started")
 
-# starting positions of the players
-pos = [(100, 100), (400, 100)] 
+# starting positions of the players and their cursors
+pos = [(100, 100, 0, 0), (400, 100, 0, 0)] 
 
 
 # helper functions for getting data from the server
 def read_pos(str):
     str = str.split(",")
-    return int(str[0]), int(str[1])
+    return int(str[0]), int(str[1]), int(str[2]), int(str[3])
 
 def make_pos(tup):
-    return str(tup[0]) + "," + str(tup[1])
+    return str(tup[0]) + "," + str(tup[1]) + "," + str(tup[2]) + "," + str(tup[3])
 
 def make_data(tup, id, map):
-    return str(id) + str(tup[0]) + "," + str(tup[1]) + make_map(map)
+    return str(id) + str(tup[0]) + "," + str(tup[1]) + str(tup[2]) + "," + str(tup[3]) + "," + make_map(map)
 
 
 # -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------

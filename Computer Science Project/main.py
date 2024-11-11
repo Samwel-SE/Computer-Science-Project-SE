@@ -353,8 +353,8 @@ def read_map(decoded_string):
 # Networking
 n = Network()
 startpos = read_pos(n.getPos()) # player position will come as a tuple
+cursor_pos = read_pos(n.getCursor()) # cursor position will also come as tuple
 y_list = read_map(n.getMap()) # map will come as large list
-print(y_list)
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":

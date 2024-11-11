@@ -10,9 +10,10 @@ class Network:
         self.port = 5555
         self.addr = (self.server, self.port)
         data = self.connect() #connect can only be called once
-        self.pos = data[1:7] # gets the players x and y coords
+        self.pos = data[1:7] # gets the players position
+        self.cursor_pos = data[8:14] # gets the players cursor position
         self.id = data[0] # gets whether player is player 1 or player 2
-        self.map = data[8:-1] # gets the map y variables for map pieces
+        self.map = data[15:-1] # gets the map y variables for map pieces
         print(self.id)
 
     def getPos(self):
@@ -20,6 +21,10 @@ class Network:
 
     def getMap(self):
         return self.map
+
+    def getCursor(self):
+        return self.cursor_pos
+
 
     def connect(self):
         try:
