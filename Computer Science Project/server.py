@@ -18,6 +18,7 @@ try:
 except socket.error as e:
     print(e)
 
+
 s.listen(2)
 print("Waiting for connection, Server Started")
 
@@ -40,7 +41,7 @@ def make_data(tup, id, map):
 # -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------
 # generates list of y variables for map pieces
 def generate_list():
-        y_list = perlinnoise.generate(1600, random.randint(50, 60))
+        y_list = perlinnoise.generate(1600, 30)
         return y_list
 
 def make_map(y_list):
@@ -49,8 +50,6 @@ def make_map(y_list):
     encoded_string = encoded_string[:-1]
     return encoded_string
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
 
 temp_var = generate_list()

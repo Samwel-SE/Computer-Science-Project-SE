@@ -160,8 +160,13 @@ class Player(GameObject):
             self.bomb_dy = diff["y"]
         
         self.cursor_pos = [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
-        return [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
+        return self.cursor_pos
 
+    def set_pos(self, pos):
+        self.x = pos[0]
+        self.y = pos[1]
+        self.cursor_pos[0] = pos[2]
+        self.cursor_pos[1] = pos[3]
 
 
 # Bomb class, inherits Game Object Class
@@ -245,7 +250,13 @@ class Game:
 
     # updates the other clients player
         self.other_player.get_cursor([self.other_player.x, self.other_player.y])
-        self.other_player.set_pos(read_pos( n.send( make_pos( (round(player1.x), round(player1.y)) ) ) ) )
+        self.other_player.set_pos(
+            read_pos( n.send( make_pos( 
+                        (round(player1.x), 
+                         round(player1.y), 
+                         round(player1.cursor_pos[0]),
+                         round(player1.cursor_pos[1])
+                        ) ) ) ) )
         
     
     # updates bomb ----------------------------------------------------------------------------------------------------------------->
@@ -287,8 +298,8 @@ class Game:
     def start_round(self):
         self.map.create_map_obj()
 
-        self.player.set_pos((100, 300))
-        self.other_player.set_pos((200, 300))
+        self.player.set_pos((100, 300, 0, 0))
+        self.other_player.set_pos((200, 300, 0, 0))
     
     def end_round(self):
         self.pause = 3
@@ -336,14 +347,16 @@ the_font = pygame.font.SysFont("Arial", 10)
 # helper functions for getting data from the server
 def read_pos(str):
     str = str.split(",")
-    return int(str[0]), int(str[1])
+    return int(str[0]), int(str[1]), int(str[2]), int(str[3])
+
 
 def make_pos(tup):
-    return str(tup[0]) + "," + str(tup[1])
+    return str(tup[0]) + "," + str(tup[1]) + "," + str(tup[2]) + "," + str(tup[3])
 
 def read_map(decoded_string):
     y_variables = []
     decoded_string = decoded_string.split(",")
+    decoded_string = decoded_string[1:]
     for i in decoded_string:
         y_variables.append(int(i))
     return y_variables
@@ -353,7 +366,6 @@ def read_map(decoded_string):
 # Networking
 n = Network()
 startpos = read_pos(n.getPos()) # player position will come as a tuple
-cursor_pos = read_pos(n.getCursor()) # cursor position will also come as tuple
 y_list = read_map(n.getMap()) # map will come as large list
 
 # chooses the player colour based on if the player connected first
@@ -362,7 +374,6 @@ if n.id == "0":
     other_player_colour = blue
 
 else:
-    startpos[0] += DISPLAYSURF.get_width() //2
     player_colour = blue
     other_player_colour = red
 

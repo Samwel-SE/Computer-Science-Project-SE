@@ -17,7 +17,7 @@ class Network:
         print(self.id)
 
     def getPos(self):
-        return self.pos
+        return self.pos + "," + self.cursor_pos
 
     def getMap(self):
         return self.map
