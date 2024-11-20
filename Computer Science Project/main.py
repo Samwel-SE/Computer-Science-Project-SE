@@ -144,6 +144,7 @@ class Player(GameObject):
         else:
             self.y += 5
 
+
     # gets coordinates of line making up player cursor
     def get_cursor(self, cursor_tuple):
         # diff dict stores the difference in x & y between cursor pos and mouse pos
@@ -161,6 +162,7 @@ class Player(GameObject):
         
         self.cursor_pos = [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
         return self.cursor_pos
+
 
     def set_pos(self, pos):
         self.x = pos[0]
@@ -226,7 +228,6 @@ class Game:
 
 
     def update(self):
-
     # updates clients player ------------------------------------------------------------------------------------------------------->
         #checks if there are obstructions to player movement
         if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
@@ -248,15 +249,15 @@ class Game:
             player1.jumping = False
             player1.jump_vel = player1.jump_height
 
-    # updates the other clients player
-        self.other_player.get_cursor([self.other_player.x, self.other_player.y])
+
+    # sends a receives player coords and player cursor coords
         self.other_player.set_pos(
             read_pos( n.send( make_pos( 
-                        (round(player1.x), 
-                         round(player1.y), 
-                         round(player1.cursor_pos[0]),
-                         round(player1.cursor_pos[1])
-                        ) ) ) ) )
+                        (round(player1.x),               
+                         round(player1.y),               
+                         round(player1.cursor_pos[0]),   
+                         round(player1.cursor_pos[1])    
+                        )))))
         
     
     # updates bomb ----------------------------------------------------------------------------------------------------------------->
@@ -298,9 +299,7 @@ class Game:
     def start_round(self):
         self.map.create_map_obj()
 
-        self.player.set_pos((100, 300, 0, 0))
-        self.other_player.set_pos((200, 300, 0, 0))
-    
+
     def end_round(self):
         self.pause = 3
         self.text = self.winner + " has won the round. Restarting in "
@@ -343,7 +342,7 @@ pygame.font.init ()
 the_font = pygame.font.SysFont("Arial", 10)
 
 
-
+# ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server
 def read_pos(str):
     str = str.split(",")
@@ -356,14 +355,13 @@ def make_pos(tup):
 def read_map(decoded_string):
     y_variables = []
     decoded_string = decoded_string.split(",")
-    decoded_string = decoded_string[1:]
     for i in decoded_string:
         y_variables.append(int(i))
     return y_variables
 
 
 
-# Networking
+# creates object of the network class to join to main server    
 n = Network()
 startpos = read_pos(n.getPos()) # player position will come as a tuple
 y_list = read_map(n.getMap()) # map will come as large list
@@ -376,6 +374,10 @@ if n.id == "0":
 else:
     player_colour = blue
     other_player_colour = red
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
 # player objects
 player1 = Player(startpos[0], startpos[1], 5, 5, player_colour)
