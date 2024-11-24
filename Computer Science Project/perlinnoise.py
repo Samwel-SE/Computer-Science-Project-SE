@@ -1,5 +1,6 @@
 import random
 
+# THIS SCRIPT IS COMPLETELY ORIGINAL --------------------------------------------------------------------------------------
 
 def randomise(terms):
     for i in range(len(terms)):

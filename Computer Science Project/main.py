@@ -11,6 +11,8 @@ from network import Network
 import perlinnoise
 
 
+# THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
+
 # game object class, to be inherited by all other classes
 class GameObject:
 
@@ -62,6 +64,8 @@ class Map:
     def draw(self):
         for i in range(self.screen_width):
             self.map_pieces[i].draw()
+
+
 
 # player class inherits gameobject class
 class Player(GameObject):
@@ -251,6 +255,9 @@ class Game:
 
 
     # sends a receives player coords and player cursor coords
+        
+
+
         self.other_player.set_pos(
             read_pos( n.send( make_pos( 
                         (round(player1.x),               
