@@ -9,9 +9,9 @@ import sys
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
 
 
-server = "192.168.1.173" 
+#server = "192.168.1.173" 
 # only use below if on school wifi
-# server = "172.17.126.26"  
+server = "172.17.126.26"  
 
 port = 5555
 
@@ -28,8 +28,8 @@ s.listen(2)
 print("Waiting for connection, Server Started")
 
 # starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
-player_data = [(100, 100, 100, 100), (400, 100, 400, 100)] 
-
+#player_data = [(100, 100, 100, 100), (400, 100, 400, 100)] 
+player_data = [(100,100,100,100,0), (400,100,400,100,0)]
 
 
 # -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------
@@ -50,8 +50,6 @@ def make_map(y_list):
 
 # function for sending map data as a string to clients to be decoded
 def round_start_data(client_data, id, map):
-    #print(make_data(client_data))
-    #return str(id) + str(client_data[0]) + "," + str(client_data[1]) + str(client_data[2]) + "," + str(client_data[3]) + "," + make_map(map)
     return str(id) + make_data(client_data) + make_map(map)
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -61,25 +59,26 @@ def round_start_data(client_data, id, map):
 # decodes the data from string form
 def read_data(str):
     str = str.split(",")
-    return int(str[0]), int(str[1]), int(str[2]), int(str[3])
+    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
 
 # encodes the data into string form to send to the clients
 def make_data(client_data):
-    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3])
+    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
 # ------------------------------------------------------------------------------------------#
 
 
-#pre game lobby map
+# pre game lobby map
 pre_game_map = [500] * 1600
 
-#maps for the rounds of the game.
+# maps for the rounds of the game
 map_1 = generate_list()
 map_2 = generate_list()
 map_3 = generate_list()
 
 
 def threaded_client(conn, client_num):
-    conn.send(str.encode(round_start_data(player_data[client_num], client_num, pre_game_map)))
+    # sends player data to the player client and sends the map data to the player aswell
+    conn.send(str.encode(round_start_data(player_data[client_num], client_num, map_1)))
     reply = ""
     
     while True:

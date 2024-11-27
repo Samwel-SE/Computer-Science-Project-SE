@@ -86,6 +86,7 @@ class Player(GameObject):
         self.jump_height = 12
         # bombs object array
         self.bombs = []
+        self.bomb_init = 0
         # bullet direction x and y
         self.bomb_dx = 0
         self.bomb_dy = 0
@@ -95,6 +96,7 @@ class Player(GameObject):
         # current weapon
         self.weapons = ["Bounce", "Splinter", "Guided"]
         self.current_weapon = 0
+
 
     # adds drawing player cursor, life count and currently equipped weapon
     def draw(self):
@@ -111,6 +113,7 @@ class Player(GameObject):
         if self.current_weapon > 2:
             self.current_weapon = 0
         DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, self.colour), (self.lives, 0))
+
 
     # gets keys currently pressed so player character can move
     def inputs(self):
@@ -136,6 +139,7 @@ class Player(GameObject):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if pygame.mouse.get_pressed(3) and len(self.bombs) == 0:
                 self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
+                self.bomb_init = 1
 
     # player jump
     def jump(self):
@@ -167,13 +171,20 @@ class Player(GameObject):
         self.cursor_pos = [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
         return self.cursor_pos
 
+    # function is used to control the client player in host players game
+    def set_pos(self, client_data):
+        # coords 
+        self.x = client_data[0]
+        self.y = client_data[1]
+        # cursor coords
+        self.cursor_pos[0] = client_data[2]
+        self.cursor_pos[1] = client_data[3]
+        # calculates dx and dy of player bomb
+        self.bomb_dx = self.cursor_pos[0] -self.x-2
+        self.bomb_dy = self.cursor_pos[1] -self.y-2
 
-    def set_pos(self, pos):
-        self.x = pos[0]
-        self.y = pos[1]
-        self.cursor_pos[0] = pos[2]
-        self.cursor_pos[1] = pos[3]
-
+        if client_data[4] == 1:
+            self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
 
 # Bomb class, inherits Game Object Class
 class Bomb(GameObject):
@@ -226,8 +237,8 @@ class Game:
         self.screen_width = self.map.screen_width
 
 
-
-    def getsInputs(self):
+    # gets the player inputs
+    def getsInputs(self): 
         self.player.inputs()
 
 
@@ -255,18 +266,16 @@ class Game:
 
 
     # sends a receives player coords and player cursor coords
-        
-
-
         self.other_player.set_pos(
-            read_pos( n.send( make_pos( 
+            read_data( n.send( make_data( 
                         (round(player1.x),               
                          round(player1.y),               
                          round(player1.cursor_pos[0]),   
-                         round(player1.cursor_pos[1])    
-                        )))))
-        
-    
+                         round(player1.cursor_pos[1]),
+                         player1.bomb_init)))
+                         )
+        ) 
+        player1.bomb_init = 0
     # updates bomb ----------------------------------------------------------------------------------------------------------------->
         #gets the pos of player cursor to aim bombs
         self.player.get_cursor(pygame.mouse.get_pos())
@@ -336,9 +345,8 @@ green = (0, 100, 10)
 pygame.init()
 
 
-
-# DISPLAYSURF = pygame.display.set_mode((600, 800), pygame.FULLSCREEN)
 DISPLAYSURF = pygame.display.set_mode((600, 800)) 
+#DISPLAYSURF = pygame.display.set_mode((1200, 800))
 # fullscreen off above for testing the multiplayer  
 DISPLAYSURF.fill(black)
 
@@ -351,13 +359,13 @@ the_font = pygame.font.SysFont("Arial", 10)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server
-def read_pos(str):
+def read_data(str):
     str = str.split(",")
-    return int(str[0]), int(str[1]), int(str[2]), int(str[3])
+    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
 
 
-def make_pos(tup):
-    return str(tup[0]) + "," + str(tup[1]) + "," + str(tup[2]) + "," + str(tup[3])
+def make_data(client_data):
+    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
 
 def read_map(decoded_string):
     y_variables = []
@@ -370,7 +378,7 @@ def read_map(decoded_string):
 
 # creates object of the network class to join to main server    
 n = Network()
-startpos = read_pos(n.getPos()) # player position will come as a tuple
+startpos = read_data(n.getPos() +",0") # player position will come as a tuple
 y_list = read_map(n.getMap()) # map will come as large list
 
 # chooses the player colour based on if the player connected first
@@ -382,7 +390,7 @@ else:
     player_colour = blue
     other_player_colour = red
 
-#-------------------------------------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
 
 
