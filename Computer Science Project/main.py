@@ -1,14 +1,10 @@
-import random
 import sys
-import math
 
 import pygame
 from pygame.locals import QUIT
 
 from network import Network
 
-# imports 1d Perlin Noise generation script I wrote to generate the maps
-import perlinnoise
 
 
 # THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
@@ -319,8 +315,8 @@ class Game:
                         bomb.explode()
                         player.bombs.pop()
     
-                if bomb.exp_collision(self.player):
-                    self.player.lives -= 1
+                        if bomb.exp_collision(self.player):
+                            quit()
 
 
     def draw(self):
@@ -408,10 +404,13 @@ y_list = read_map(n.getMap()) # map will come as large list
 if n.id == "0":
     player_colour = red
     other_player_colour = blue
+    print("YOUR ARE THE RED PLAYER:")
+
 
 else:
     player_colour = blue
     other_player_colour = red
+    print("YOU ARE THE BLUE PLAYER")
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------->
 

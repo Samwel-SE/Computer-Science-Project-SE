@@ -13,7 +13,6 @@ class Network:
         self.server = "172.17.126.26"
         
         # hotspot IP
-        
         #self.server = "172.20.10.3"
         
         self.port = 5555
