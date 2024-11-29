@@ -10,8 +10,12 @@ import sys
 
 
 #server = "192.168.1.173" 
+
 # only use below if on school wifi
 server = "172.17.126.26"  
+
+# hotspot IP
+#server = "172.20.10.3"
 
 port = 5555
 
@@ -36,8 +40,8 @@ player_data = [(100,100,100,100,0), (400,100,400,100,0)]
 
 # generates list of y variables for pieces of map
 def generate_list():
-        y_list = perlinnoise.generate(1600, 40)
-        return y_list
+    y_list = perlinnoise.generate(1600, 40)
+    return y_list
 
 
 # puts map data into string form

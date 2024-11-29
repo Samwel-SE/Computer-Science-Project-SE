@@ -154,16 +154,16 @@ class Player(GameObject):
 
 
     # gets coordinates of line making up player cursor
-    def get_cursor(self, cursor_tuple):
+    def get_cursor(self, mouse_tuple):
         # diff dict stores the difference in x & y between cursor pos and mouse pos
-        diff = {"x": abs(cursor_tuple[0] -self.x) *0.04, "y": abs(cursor_tuple[1] -self.y) *0.04}
+        diff = {"x": abs(mouse_tuple[0] -self.x) *0.04, "y": abs(mouse_tuple[1] -self.y) *0.04}
         
-        if cursor_tuple[0] >= (self.x + 2): 
+        if mouse_tuple[0] >= (self.x + 2): 
            self.bomb_dx = diff["x"]
         else: 
             self.bomb_dx = -diff["x"]
 
-        if cursor_tuple[1] <= (self.y + 2): 
+        if mouse_tuple[1] <= (self.y + 2): 
             self.bomb_dy = -diff["y"]
         else: 
             self.bomb_dy = diff["y"]
@@ -176,15 +176,26 @@ class Player(GameObject):
         # coords 
         self.x = client_data[0]
         self.y = client_data[1]
+
+        # sets dx and dy
+        #self.dx = client_data[0]
+        #self.dy = client_data[1]
+
         # cursor coords
-        self.cursor_pos[0] = client_data[2]
-        self.cursor_pos[1] = client_data[3]
+        self.cursor_pos = [client_data[2], client_data[3]]
+        
         # calculates dx and dy of player bomb
         self.bomb_dx = self.cursor_pos[0] -self.x-2
         self.bomb_dy = self.cursor_pos[1] -self.y-2
 
+        #calculates cursor_coords based off dx and dy
+        #self.cursor_pos = [self.dx +self.x+2, self.dy +self.y+2]
+
+
         if client_data[4] == 1:
             self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
+
+
 
 # Bomb class, inherits Game Object Class
 class Bomb(GameObject):
@@ -243,29 +254,13 @@ class Game:
 
 
     def update(self):
-    # updates clients player ------------------------------------------------------------------------------------------------------->
-        #checks if there are obstructions to player movement
-        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
-            self.player.move_left = False 
-            
-        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
-            self.player.move_right = False
+    
+    # sends current players client data to server and recieves other players client data ----------------------------------->
 
-        #jump command for player 
-        self.player.jump()
-        #moves player left and right
-        if self.player.move_right:
-            self.player.x += 3
-        if self.player.move_left:
-            self.player.x -= 3  
+    # this updates the clients cursor position before the player moves so the recieving client has the correct data 
+        self.player.get_cursor(pygame.mouse.get_pos())
 
-        if player1.collision(self.map.map_pieces[player1.x]) or player1.collision(self.map.map_pieces[player1.x + player1.width]):
-            player1.y = self.map.map_pieces[player1.x].y - 5
-            player1.jumping = False
-            player1.jump_vel = player1.jump_height
-
-
-    # sends a receives player coords and player cursor coords
+        # sends a receives player coords and player cursor coords
         self.other_player.set_pos(
             read_data( n.send( make_data( 
                         (round(player1.x),               
@@ -275,17 +270,45 @@ class Game:
                          player1.bomb_init)))
                          )
         ) 
-        player1.bomb_init = 0
-    # updates bomb ----------------------------------------------------------------------------------------------------------------->
-        #gets the pos of player cursor to aim bombs
-        self.player.get_cursor(pygame.mouse.get_pos())
 
+        # sets bomb initialisation to 0 before bomb is updated so only one projectile is created for other client
+        player1.bomb_init = 0
+    # ----------------------------------------------------------------------------------------------------------->
+
+
+
+    # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
+        # checks if there are obstructions to player movement
+        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
+            self.player.move_left = False 
+            
+        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
+            self.player.move_right = False
+
+        # jump command for player 
+        self.player.jump()
+    
+        # moves player left and right
+        if self.player.move_right:
+            self.player.x += 3
+        if self.player.move_left:
+            self.player.x -= 3  
+    
+        # checks for collision with map piecies below player
+        if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
+            self.player.y = self.map.map_pieces[self.player.x].y - 5
+            self.player.jumping = False
+            self.player.jump_vel = self.player.jump_height
+    # ----------------------------------------------------------------------------------------------------------------------->
+
+
+    # updates bomb ----------------------------------------------------------------------------------------------------------------->
         for player in [self.player, self.other_player]:
             for bomb in player.bombs:
                 bomb.move()
 
                 # collision for bombs and end of screen
-                if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0 or bomb.y >= DISPLAYSURF.get_height():
+                if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0:
                     bomb.explode()
                     player.bombs.pop()
 
@@ -404,7 +427,7 @@ terr = Map(green)
 terr.y_vars = y_list
 
 # stops player from seeing mouse cursor
-pygame.mouse.set_visible(False)
+#pygame.mouse.set_visible(False)
 
 game = Game(player1, player2, terr)
 

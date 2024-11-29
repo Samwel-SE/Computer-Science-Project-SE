@@ -7,10 +7,17 @@ class Network:
 
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
         #self.server = "192.168.1.173"
         # school wifi IP below
         self.server = "172.17.126.26"
+        
+        # hotspot IP
+        
+        #self.server = "172.20.10.3"
+        
         self.port = 5555
+        
         self.addr = (self.server, self.port)
         data = self.connect() #connect can only be called once
 
@@ -21,13 +28,12 @@ class Network:
 
         self.bomb_init = [18]
         #self.map = data[16:-1]
-        self.map = data[20:-1] # gets the map y variables for map pieces
+        self.map = data[18:-1] # gets the map y variables for map pieces
 
 
 
     # get functions -------------------------------------------------
     def getPos(self):
-        print(self.pos + "," + self.cursor_pos)
         return self.pos + "," + self.cursor_pos
 
     def getCursor(self):
