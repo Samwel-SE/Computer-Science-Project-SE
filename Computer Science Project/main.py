@@ -181,6 +181,7 @@ class Player(GameObject):
         self.bomb_dx = self.cursor_pos[0] -self.x-2
         self.bomb_dy = self.cursor_pos[1] -self.y-2
 
+        # if clients bomb_init equals 1 it will append a bomb object to other_players bomb list so it is drawn on the screen
         if client_data[4] == 1:
             self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
 
@@ -191,10 +192,20 @@ class Bomb(GameObject):
 
     def __init__(self, x, y, width, height, colour, dx, dy):
         super().__init__(x, y, width, height, colour)
+        
+        # change in x and y Ie movement speed of bomb
         self.dx = round(dx)
         self.dy = round(dy)
+        
+        # radius of bomb explosion
         self.exp_rad = 50
+        
+        # number of bounces bomb makes before exploding
         self.bounces = 3
+
+        # state of bomb: moving or exploded
+        self.state = "moving"
+
 
     # movement of the bomb
     def move(self):
@@ -208,14 +219,26 @@ class Bomb(GameObject):
         self.dy = -(self.dy) * 0.7
         self.bounces -= 1
 
+
+    def draw(self):
+        if self.state == "exploded":
+            # rgb code used below is colour orange
+            pygame.draw.circle(DISPLAYSURF, (255, 165, 0), (self.x+1, self.y+1), self.exp_rad)
+        else:
+
+            # if the state isn't exploded it will just draw the bomb obj as a yellow square
+            super().draw()
+
+
     # draws the expxlosion of the bomb
     def explode(self):
-        pygame.draw.circle(DISPLAYSURF, (255, 155, 0), (self.x + 1, self.y + 1), self.exp_rad)
+        self.state = "exploded"
 
     # checks whether points of other objects overlap with explosion, returning True or False
     def exp_collision(self, obj2):
         if ((self.x -1)- obj2.x) ** 2 + ((self.y +1) - obj2.y) ** 2 <= self.exp_rad**2:
             return True
+
 
 
 
@@ -298,22 +321,28 @@ class Game:
                 # collision for bombs and end of screen
                 if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0:
                     bomb.explode()
-                    player.bombs.pop()
-
+                
+                # code below means bomb will bounce after colliding with the map
                 elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
                     if bomb.bounces > 0:
                         bomb.bounce()
+                    
+                    # and will explode if it doesn't have any bounces left
                     else:
                         bomb.explode()
-                        player.bombs.pop()
 
-                        #gets collision with your own bomb explosion and other players bomb explosion
+                        
+                        # gets collision with your own bomb explosion
                         if bomb.exp_collision(self.player):
                             self.loser = "You"
                             self.end_round()
+
+                        # gets collision with other player bomb explosion
                         elif bomb.exp_collision(self.other_player):
                             self.loser = "They"
                             self.end_round()
+
+
 
     def draw(self):
         #draws player objects and map
@@ -325,21 +354,32 @@ class Game:
         for player in [self.player, self.other_player]:
             for bomb in player.bombs:
                 bomb.draw()
+                
+                # deletes the bomb obj once it has exploded
+                if bomb.state == "exploded":
+                    player.bombs.pop()
+
+
 
         # draws text for the ends of rounds and the end of the game
         DISPLAYSURF.blit(the_font.render(self.text, False, white), (50, 200))
+
 
     def start_round(self):
         self.map.create_map_obj()
 
 
     def end_round(self):
+        
         # starts a 10 second count down
-        for i in range(10):
+        for i in range(5):
+            
             # fills screen so stuff is not drawn over itself
             DISPLAYSURF.fill(black)
+            
             # displays count down text
-            self.text = f"{self.loser} have lost the round. Next Round starting in {10-i}"
+            self.text = f"{self.loser} have lost the round. Next Round starting in {5-i}"
+
             #draws text once round has ended
             self.draw()
 
@@ -349,19 +389,14 @@ class Game:
             #pauses the game for a second
             time.sleep(1)
         
-        # then sets the text back to nothing so text is not drawn whilst game is running
+        # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
         self.text = ""
+        self.start_round()
 
 
     def end_game(self):
         self.pause = 5
         self.text = self.winner + " has won the game. Returning to Title Screen in "
-        #timer()
-    
-
-    def pause(self):
-        if self.pause:
-            pass
 
 
 
@@ -373,12 +408,16 @@ blue = (0, 0, 255)
 white = (255, 255, 255)
 green = (0, 100, 10)
 
+
+
 # pygame initialisation
 pygame.init()
 
-
+# INITIALISING DISPLAY SURFACE
 DISPLAYSURF = pygame.display.set_mode((600, 800)) 
 #DISPLAYSURF = pygame.display.set_mode((1200, 800))
+
+
 # fullscreen off above for testing the multiplayer  
 DISPLAYSURF.fill(black)
 
@@ -387,7 +426,8 @@ DISPLAYSURF.fill(black)
 # initialises the font to be used
 pygame.font.init()
 the_font = pygame.font.SysFont("Arial", 10)
-end_round_text = pygame.font.SysFont("Arial", 20)
+
+end_round_text = pygame.font.SysFont("Arial", 50)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server
