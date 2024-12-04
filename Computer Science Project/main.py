@@ -5,6 +5,7 @@ from pygame.locals import QUIT
 
 from network import Network
 
+import time
 
 
 # THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
@@ -168,14 +169,10 @@ class Player(GameObject):
         return self.cursor_pos
 
     # function is used to control the client player in host players game
-    def set_pos(self, client_data):
+    def set_player(self, client_data):
         # coords 
         self.x = client_data[0]
         self.y = client_data[1]
-
-        # sets dx and dy
-        #self.dx = client_data[0]
-        #self.dy = client_data[1]
 
         # cursor coords
         self.cursor_pos = [client_data[2], client_data[3]]
@@ -183,10 +180,6 @@ class Player(GameObject):
         # calculates dx and dy of player bomb
         self.bomb_dx = self.cursor_pos[0] -self.x-2
         self.bomb_dy = self.cursor_pos[1] -self.y-2
-
-        #calculates cursor_coords based off dx and dy
-        #self.cursor_pos = [self.dx +self.x+2, self.dy +self.y+2]
-
 
         if client_data[4] == 1:
             self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
@@ -238,11 +231,10 @@ class Game:
         #map objects
         self.map = map
 
-        self.pause = 3
-        self.text = ""
-
         self.screen_width = self.map.screen_width
 
+        self.text = ""
+        self.loser = ""
 
     # gets the player inputs
     def getsInputs(self): 
@@ -257,7 +249,7 @@ class Game:
         self.player.get_cursor(pygame.mouse.get_pos())
 
         # sends a receives player coords and player cursor coords
-        self.other_player.set_pos(
+        self.other_player.set_player(
             read_data( n.send( make_data( 
                         (round(player1.x),               
                          round(player1.y),               
@@ -272,25 +264,25 @@ class Game:
     # ----------------------------------------------------------------------------------------------------------->
 
 
-
     # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
         # checks if there are obstructions to player movement
+
         if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
             self.player.move_left = False 
-            
+                
         if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
             self.player.move_right = False
 
         # jump command for player 
         self.player.jump()
-    
+        
         # moves player left and right
         if self.player.move_right:
             self.player.x += 3
         if self.player.move_left:
             self.player.x -= 3  
-    
-        # checks for collision with map piecies below player
+        
+            # checks for collision with map piecies below player
         if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
             self.player.y = self.map.map_pieces[self.player.x].y - 5
             self.player.jumping = False
@@ -314,10 +306,14 @@ class Game:
                     else:
                         bomb.explode()
                         player.bombs.pop()
-    
-                        if bomb.exp_collision(self.player):
-                            quit()
 
+                        #gets collision with your own bomb explosion and other players bomb explosion
+                        if bomb.exp_collision(self.player):
+                            self.loser = "You"
+                            self.end_round()
+                        elif bomb.exp_collision(self.other_player):
+                            self.loser = "They"
+                            self.end_round()
 
     def draw(self):
         #draws player objects and map
@@ -330,15 +326,32 @@ class Game:
             for bomb in player.bombs:
                 bomb.draw()
 
+        # draws text for the ends of rounds and the end of the game
+        DISPLAYSURF.blit(the_font.render(self.text, False, white), (50, 200))
 
     def start_round(self):
         self.map.create_map_obj()
 
 
     def end_round(self):
-        self.pause = 3
-        self.text = self.winner + " has won the round. Restarting in "
-        #timer()
+        # starts a 10 second count down
+        for i in range(10):
+            # fills screen so stuff is not drawn over itself
+            DISPLAYSURF.fill(black)
+            # displays count down text
+            self.text = f"{self.loser} have lost the round. Next Round starting in {10-i}"
+            #draws text once round has ended
+            self.draw()
+
+            #updates the screen
+            pygame.display.flip()
+
+            #pauses the game for a second
+            time.sleep(1)
+        
+        # then sets the text back to nothing so text is not drawn whilst game is running
+        self.text = ""
+
 
     def end_game(self):
         self.pause = 5
@@ -372,9 +385,9 @@ DISPLAYSURF.fill(black)
 
 
 # initialises the font to be used
-pygame.font.init ()
+pygame.font.init()
 the_font = pygame.font.SysFont("Arial", 10)
-
+end_round_text = pygame.font.SysFont("Arial", 20)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server

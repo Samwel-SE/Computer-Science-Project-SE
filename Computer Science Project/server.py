@@ -2,7 +2,7 @@ import socket
 from _thread import *
 import perlinnoise
 import sys
-
+import time
 
 
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
@@ -31,7 +31,6 @@ s.listen(2)
 print("Waiting for connection, Server Started")
 
 # starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
-#player_data = [(100, 100, 100, 100), (400, 100, 400, 100)] 
 player_data = [(100,100,100,100,0), (400,100,400,100,0)]
 
 
@@ -67,8 +66,7 @@ def read_data(str):
 # encodes the data into string form to send to the clients
 def make_data(client_data):
     return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
-# ------------------------------------------------------------------------------------------#
-
+# ---------------------------------------------------------------------------------------------
 
 # pre game lobby map
 pre_game_map = [500] * 1600
@@ -78,10 +76,12 @@ map_1 = generate_list()
 map_2 = generate_list()
 map_3 = generate_list()
 
+# bool to control pause
+game_state = "main loop"
 
 def threaded_client(conn, client_num):
     # sends player data to the player client and sends the map data to the player aswell
-    conn.send(str.encode(round_start_data(player_data[client_num], client_num, map_1)))
+    conn.send(str.encode(round_start_data(player_data[client_num], client_num, pre_game_map)))
     reply = ""
     
     while True:
@@ -97,6 +97,7 @@ def threaded_client(conn, client_num):
                     reply = player_data[0]
                 else: 
                     reply = player_data[1]
+                
                 #print("recieved: ", data)  for testing server receiving
                 #print("Sending: ", reply) for testing server sending
 
@@ -104,7 +105,7 @@ def threaded_client(conn, client_num):
 
         except:
             break
-        
+    
     print("Lost Connection")
     conn.close()
 
