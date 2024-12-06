@@ -57,6 +57,7 @@ def round_start_data(client_data, id, map):
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
+
 # ------------------- helper functions for encoding and decoding data -----------------------#
 # decodes the data from string form
 def read_data(str):

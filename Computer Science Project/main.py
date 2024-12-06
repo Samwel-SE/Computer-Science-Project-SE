@@ -81,13 +81,16 @@ class Player(GameObject):
         self.jumping = False
         self.jump_vel = 12
         self.jump_height = 12
+
         # bombs object array
         self.bombs = []
         self.bomb_init = 0
+
         # bullet direction x and y
         self.bomb_dx = 0
         self.bomb_dy = 0
         
+
         self.lives = 3
 
         # current weapon
@@ -137,6 +140,8 @@ class Player(GameObject):
             if pygame.mouse.get_pressed(3) and len(self.bombs) == 0:
                 self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
                 self.bomb_init = 1
+            if pygame.mouse.get_pressed(3):
+                print("MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED")
 
     # player jump
     def jump(self):
@@ -259,9 +264,18 @@ class Game:
         self.text = ""
         self.loser = ""
 
+        # pause state
+        self.pause = False
+
+
     # gets the player inputs
     def getsInputs(self): 
-        self.player.inputs()
+        
+        # only checks for player inputs when the game isn't paused
+        if not(self.pause):
+            self.player.inputs()
+
+
 
 
     def update(self):
@@ -335,11 +349,13 @@ class Game:
                         # gets collision with your own bomb explosion
                         if bomb.exp_collision(self.player):
                             self.loser = "You"
+                            self.pause = True
                             self.end_round()
 
                         # gets collision with other player bomb explosion
                         elif bomb.exp_collision(self.other_player):
                             self.loser = "They"
+                            self.pause = True
                             self.end_round()
 
 
@@ -362,16 +378,32 @@ class Game:
 
 
         # draws text for the ends of rounds and the end of the game
-        DISPLAYSURF.blit(the_font.render(self.text, False, white), (50, 200))
+        DISPLAYSURF.blit(end_round_text.render(self.text, False, white), (50, 200))
 
 
     def start_round(self):
         self.map.create_map_obj()
+        
+        try: 
+            # deletes the other bombs so they aren't created once game starts again
+            self.player.bombs = []
+            self.other_player.bombs = []
+        except:
+            print("there are no bomb objects")
+
+        # removes all getInputs events from queue so no bomb objects 
+        pygame.event.clear()
+
+        
+        # sets the bomb initialisation variable to 0 so the other clients dont draw a bomb
+        self.player.bomb_init = 0
+        self.other_player.bomb_init = 0
+
 
 
     def end_round(self):
         
-        # starts a 10 second count down
+        # starts a 5 second count down
         for i in range(5):
             
             # fills screen so stuff is not drawn over itself
@@ -391,6 +423,7 @@ class Game:
         
         # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
         self.text = ""
+        self.pause = False
         self.start_round()
 
 
@@ -427,7 +460,7 @@ DISPLAYSURF.fill(black)
 pygame.font.init()
 the_font = pygame.font.SysFont("Arial", 10)
 
-end_round_text = pygame.font.SysFont("Arial", 50)
+end_round_text = pygame.font.SysFont("Arial", 20)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server
