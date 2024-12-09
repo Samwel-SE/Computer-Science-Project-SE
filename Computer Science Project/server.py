@@ -58,7 +58,7 @@ def round_start_data(client_data, id, map):
 
 
 
-# ------------------- helper functions for encoding and decoding data -----------------------#
+# ------------------- helper functions for encoding and decoding data --------------------------------------------------------------------------#
 # decodes the data from string form
 def read_data(str):
     str = str.split(",")
@@ -67,7 +67,7 @@ def read_data(str):
 # encodes the data into string form to send to the clients
 def make_data(client_data):
     return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
-# ---------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------------------#
 
 # pre game lobby map
 pre_game_map = [500] * 1600

@@ -143,6 +143,7 @@ class Player(GameObject):
             if pygame.mouse.get_pressed(3):
                 print("MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED")
 
+
     # player jump
     def jump(self):
         if self.jumping:
@@ -218,6 +219,7 @@ class Bomb(GameObject):
         self.y += round(self.dy)
         self.dy += 1
     
+
     # bounce function when bounces are greater than 0, dx and dy decrease to mimic how a ball would bounce
     def bounce(self):
         self.dx = self.dx * 0.7
@@ -279,11 +281,11 @@ class Game:
 
 
     def update(self):
-    
-    # sends current players client data to server and recieves other players client data ----------------------------------->
 
-    # this updates the clients cursor position before the player moves so the recieving client has the correct data 
-        self.player.get_cursor(pygame.mouse.get_pos())
+        # sends current players client data to server and recieves other players client data ----------------------------------->
+
+        # this updates the clients cursor position before the player moves so the recieving client has the correct data 
+        #self.player.get_cursor(pygame.mouse.get_pos())
 
         # sends a receives player coords and player cursor coords
         self.other_player.set_player(
@@ -327,6 +329,7 @@ class Game:
     # ----------------------------------------------------------------------------------------------------------------------->
 
 
+        self.player.get_cursor(pygame.mouse.get_pos())
     # updates bomb ----------------------------------------------------------------------------------------------------------------->
         for player in [self.player, self.other_player]:
             for bomb in player.bombs:
@@ -345,7 +348,6 @@ class Game:
                     else:
                         bomb.explode()
 
-                        
                         # gets collision with your own bomb explosion
                         if bomb.exp_collision(self.player):
                             self.loser = "You"
@@ -382,15 +384,9 @@ class Game:
 
 
     def start_round(self):
+        # creates the new map object for the game
         self.map.create_map_obj()
         
-        try: 
-            # deletes the other bombs so they aren't created once game starts again
-            self.player.bombs = []
-            self.other_player.bombs = []
-        except:
-            print("there are no bomb objects")
-
         # removes all getInputs events from queue so no bomb objects 
         pygame.event.clear()
 
@@ -483,20 +479,24 @@ def read_map(decoded_string):
 
 # creates object of the network class to join to main server    
 n = Network()
-startpos = read_data(n.getPos() +",0") # player position will come as a tuple
-y_list = read_map(n.getMap()) # map will come as large list
+
+
+# player position will come as a tuple
+startpos = read_data(n.getPos() +",0")
+
+
+# map will come as  a large list
+y_list = read_map(n.getMap())
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":
     player_colour = red
     other_player_colour = blue
-    print("YOUR ARE THE RED PLAYER:")
 
 
 else:
     player_colour = blue
     other_player_colour = red
-    print("YOU ARE THE BLUE PLAYER")
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
