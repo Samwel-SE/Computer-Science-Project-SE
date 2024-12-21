@@ -52,14 +52,12 @@ class Map:
     # creates map obj
     def create_map_obj(self):
         self.map_pieces.clear()
-        for i in range(self.screen_width):
+        for i in range(len(self.y_vars)):
             self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
-
-
 
     # iterates through and draws all the gameobjects making up the map
     def draw(self):
-        for i in range(self.screen_width):
+        for i in range(len(self.y_vars)):
             self.map_pieces[i].draw()
 
 
@@ -84,7 +82,7 @@ class Player(GameObject):
 
         # bombs object array
         self.bombs = []
-        self.bomb_init = 0
+        self.state_checker = 0
 
         # bullet direction x and y
         self.bomb_dx = 0
@@ -139,9 +137,7 @@ class Player(GameObject):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if pygame.mouse.get_pressed(3) and len(self.bombs) == 0:
                 self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
-                self.bomb_init = 1
-            if pygame.mouse.get_pressed(3):
-                print("MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED MOUSE HAS BEEN PRESSED")
+                self.state_checker = 1
 
 
     # player jump
@@ -284,9 +280,6 @@ class Game:
 
         # sends current players client data to server and recieves other players client data ----------------------------------->
 
-        # this updates the clients cursor position before the player moves so the recieving client has the correct data 
-        #self.player.get_cursor(pygame.mouse.get_pos())
-
         # sends a receives player coords and player cursor coords
         self.other_player.set_player(
             read_data( n.send( make_data( 
@@ -294,13 +287,14 @@ class Game:
                          round(player1.y),               
                          round(player1.cursor_pos[0]),   
                          round(player1.cursor_pos[1]),
-                         player1.bomb_init)))
+                         player1.state_checker)))
                          )
         ) 
 
-        # sets bomb initialisation to 0 before bomb is updated so only one projectile is created for other client
-        player1.bomb_init = 0
+        # sets state checker to 0 before bomb is updated so only one projectile is created for other client
+        player1.state_checker = 0
     # ----------------------------------------------------------------------------------------------------------->
+
 
 
     # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
@@ -328,8 +322,10 @@ class Game:
             self.player.jump_vel = self.player.jump_height
     # ----------------------------------------------------------------------------------------------------------------------->
 
-
+        # gets player cursor so bomb can be updated correctly
         self.player.get_cursor(pygame.mouse.get_pos())
+
+
     # updates bomb ----------------------------------------------------------------------------------------------------------------->
         for player in [self.player, self.other_player]:
             for bomb in player.bombs:
@@ -382,19 +378,48 @@ class Game:
         # draws text for the ends of rounds and the end of the game
         DISPLAYSURF.blit(end_round_text.render(self.text, False, white), (50, 200))
 
+    
+    def start_game(self):
+        pass
+
+
+
 
     def start_round(self):
+        # sets state checker to 2 to tell server to send next map
+        player1.state_checker = 2
+
+        
+        # sends a receives player coords and player cursor coords
+        n.send( make_data( 
+            (round(player1.x),               
+             round(player1.y),               
+             round(player1.cursor_pos[0]),   
+             round(player1.cursor_pos[1]),
+             player1.state_checker)))
+        
+        # gets the map data 
+        map_data = n.getMap()
+
+        # sets state checker back to 0 so server doesn't update map again
+        player1.state_checker = 0
+
         # creates the new map object for the game
+        self.map.y_vars = read_map(map_data)
         self.map.create_map_obj()
+        
+        # sets the player client back to its starting position and sets the player clients state checker to 0
+        player_data = read_data(n.getPos()+",0")
+        
+        self.player.x = player_data[0]
+        self.player.y = player_data[1]
+        self.player.cursor_pos = (player_data[2], player_data[3])
+        self.player.state_checker = player_data[4]
         
         # removes all getInputs events from queue so no bomb objects 
         pygame.event.clear()
 
         
-        # sets the bomb initialisation variable to 0 so the other clients dont draw a bomb
-        self.player.bomb_init = 0
-        self.other_player.bomb_init = 0
-
 
 
     def end_round(self):
@@ -443,8 +468,8 @@ green = (0, 100, 10)
 pygame.init()
 
 # INITIALISING DISPLAY SURFACE
-DISPLAYSURF = pygame.display.set_mode((600, 800)) 
-#DISPLAYSURF = pygame.display.set_mode((1200, 800))
+#DISPLAYSURF = pygame.display.set_mode((600, 800))
+DISPLAYSURF = pygame.display.set_mode((1200, 800))
 
 
 # fullscreen off above for testing the multiplayer  
@@ -472,7 +497,10 @@ def read_map(decoded_string):
     y_variables = []
     decoded_string = decoded_string.split(",")
     for i in decoded_string:
-        y_variables.append(int(i))
+        if not(i):
+            pass
+        else:
+            y_variables.append(int(i))
     return y_variables
 
 
@@ -480,13 +508,13 @@ def read_map(decoded_string):
 # creates object of the network class to join to main server    
 n = Network()
 
-
-# player position will come as a tuple
-startpos = read_data(n.getPos() +",0")
+# n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
+startpos = read_data(n.getPos()+",0")
 
 
 # map will come as  a large list
 y_list = read_map(n.getMap())
+
 
 # chooses the player colour based on if the player connected first
 if n.id == "0":
@@ -511,16 +539,16 @@ player2 = Player(0, 0, 5, 5, other_player_colour)
 terr = Map(green)
 terr.y_vars = y_list
 
+terr.create_map_obj()
+
 # stops player from seeing mouse cursor
 #pygame.mouse.set_visible(False)
 
 game = Game(player1, player2, terr)
 
-game.start_round()
-
 Clock = pygame.time.Clock()
 
-
+game.start_game()
 
 # update loop --------------------------------------------------------------------------------------------------------------------------------------------->
 while True:
@@ -539,4 +567,6 @@ while True:
 
 
     pygame.display.flip()
+
+    # tick rate is set to 60: screen is updated 60 times a second
     Clock.tick(60)
