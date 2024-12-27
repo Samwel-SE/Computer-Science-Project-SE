@@ -10,7 +10,7 @@ class Network:
         
 
         # home wifi
-        self.server = "192.168.1.174"
+        self.server = "192.168.1.173"
         
         
         # school wifi IP below
@@ -67,39 +67,32 @@ class Network:
     # client sending and recieving data from server 
     def send(self, data):
         try:
-            if data[-1] != 2:
+            # uses data[-1] ie state checker to see if new map data needs to be sent
+            if data[-1] != "2":
                 self.client.send(str.encode(data))      
                 recv_data = self.client.recv(4096).decode()
-            
-            else:
+                self.data = recv_data
+
+            #if state checker is on "2" then the new map data is sent
+            elif data[-1] == "2":
+
                 self.client.send(str.encode(data))
-                recv_data = self.client.recv(16384).decode()
+                
+                # chunks the map data into 2 parts as to not go over the buffer limit
+
+                recv_data_1 = self.client.recv(8192).decode()
+                recv_data_2 = self.client.recv(8192).decode()
             
-            self.data = recv_data
+               
+
+                self.data = recv_data_1 + "," + recv_data_2
+
             self.update_data()
 
             return self.data
         except socket.error as e:
             print(e)
-    
 
-    # client just recieving data from the server 
-    # def recieve_data(self):
-    #     try:
-    #         print("recieve data being called")
-    #         data_part_1 = self.client.recv(8196).decode()
-    #         # data_part_2 = self.client.recv(8196).decode() 
-    #         # data_part_3 = self.client.recv(8196).decode()
-            
-    #         self.data = data_part_1
-    #         print(self.data)
-    #         return self.data
-
-
-    #     except socket.error as e:
-    #         print(e)
-
-    # this updates the data of the player so it isnt just using the same data as before the start of the new round 
     def update_data(self):
 
         self.id = self.data[0] # gets whether player is player 1 or player 2

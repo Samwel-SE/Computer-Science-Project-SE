@@ -388,8 +388,6 @@ class Game:
     def start_round(self):
         # sets state checker to 2 to tell server to send next map
         player1.state_checker = 2
-
-        
         # sends a receives player coords and player cursor coords
         n.send( make_data( 
             (round(player1.x),               

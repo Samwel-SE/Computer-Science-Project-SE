@@ -8,7 +8,7 @@ import time
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
 
 # home wifi
-server = "192.168.1.174" 
+server = "192.168.1.173" 
 
 # only use below if on school wifi
 # server = "172.17.126.26"  
@@ -27,7 +27,9 @@ except socket.error as e:
     print(e)
 
 
+# listens for connections
 s.listen(2)
+
 print("Waiting for connection, Server Started")
 
 # starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
@@ -123,12 +125,16 @@ def threaded_client(conn, client_num):
                 
                 # turns the data to be sent into string so it can be encoded
                 data_to_be_sent = stringify_round_start_data(client_num, start_pos[client_num], maps[map_counter])
-                
+
+                # chunks the map data into two parts so it doesnt go over the huffer limit
+                data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
+                data_to_be_sent_prt_2 = data_to_be_sent[4096:-1]
+
                 print("sending new map")
 
-                # sends the new map
-                conn.sendall(str.encode(data_to_be_sent))
-                
+                # sends the new map in two parts as stated above
+                conn.sendall(str.encode(data_to_be_sent_prt_1))
+                conn.sendall(str.encode(data_to_be_sent_prt_2))
 
         except:
             break
