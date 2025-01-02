@@ -65,8 +65,11 @@ class Map:
 # player class inherits gameobject class
 class Player(GameObject):
     
-    def __init__(self, x, y, width, height, colour):
+    def __init__(self, x, y, width, height, colour, ui_x_coord):
         super().__init__(x, y, width, height, colour)
+
+        # user interface x coordinate
+        self.ui_x_coord = ui_x_coord
 
         # movement tuple's bool's change when a and d keys pressed, if true the player will move left or right
         self.move_right = False
@@ -88,12 +91,9 @@ class Player(GameObject):
         self.bomb_dx = 0
         self.bomb_dy = 0
         
-
+        # Number of lives player has
         self.lives = 3
 
-        # current weapon
-        self.weapons = ["Bounce", "Splinter", "Guided"]
-        self.current_weapon = 0
 
 
     # adds drawing player cursor, life count and currently equipped weapon
@@ -105,12 +105,7 @@ class Player(GameObject):
 
         #draws player live count
         for i in range(self.lives):
-            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10, 0, 5, 10))
-
-        # shows currently equipped weapon at the top of the screen
-        if self.current_weapon > 2:
-            self.current_weapon = 0
-        DISPLAYSURF.blit(the_font.render(self.weapons[self.current_weapon], False, self.colour), (self.lives, 0))
+            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10 + self.ui_x_coord, 0, 5, 10))
 
 
     # gets keys currently pressed so player character can move
@@ -282,17 +277,18 @@ class Game:
 
         # sends a receives player coords and player cursor coords
         self.other_player.set_player(
-            read_data( n.send( make_data( 
-                        (round(player1.x),               
-                         round(player1.y),               
-                         round(player1.cursor_pos[0]),   
-                         round(player1.cursor_pos[1]),
-                         player1.state_checker)))
-                         )
-        ) 
-
+            read_data(
+                n.send( 
+                    make_data( 
+                        (round(self.player.x),               
+                        round(self.player.y),               
+                        round(self.player.cursor_pos[0]),   
+                        round(self.player.cursor_pos[1]),
+                        self.player.state_checker)))
+                        ))
+             
         # sets state checker to 0 before bomb is updated so only one projectile is created for other client
-        player1.state_checker = 0
+        self.player.state_checker = 0
     # ----------------------------------------------------------------------------------------------------------->
 
 
@@ -346,15 +342,38 @@ class Game:
 
                         # gets collision with your own bomb explosion
                         if bomb.exp_collision(self.player):
+                            
+                            # sets loser to you for correct text to be displayed
                             self.loser = "You"
-                            self.pause = True
-                            self.end_round()
+                            # self.pause is on so player inputs arent recieved
+                            self.pause = True  
 
+                            # player loses life if it has been hit
+                            self.player.lives -= 1
+                            
+                            # when player has 0 lives end_game is called
+                            if self.player.lives == 0:
+                                self.end_game()
+
+                            # if the player has more than 0 lives game continues, end round called instead
+                            else:
+                                self.end_round()
+                        
                         # gets collision with other player bomb explosion
                         elif bomb.exp_collision(self.other_player):
                             self.loser = "They"
                             self.pause = True
-                            self.end_round()
+
+                            # player loses a life once they are hit
+                            self.other_player.lives -= 1
+                            
+                            # when player has 0 lives the end_game is called
+                            if self.other_player.lives == 0:
+                                self.end_game()
+
+                            # if the player has more than 0 lives game continues, end round called instead
+                            else:
+                                self.end_round()
 
 
 
@@ -383,24 +402,22 @@ class Game:
         pass
 
 
-
-
     def start_round(self):
         # sets state checker to 2 to tell server to send next map
-        player1.state_checker = 2
+        self.player.state_checker = 2
         # sends a receives player coords and player cursor coords
         n.send( make_data( 
-            (round(player1.x),               
-             round(player1.y),               
-             round(player1.cursor_pos[0]),   
-             round(player1.cursor_pos[1]),
-             player1.state_checker)))
+            (round(self.player.x),               
+             round(self.player.y),               
+             round(self.player.cursor_pos[0]),   
+             round(self.player.cursor_pos[1]),
+             self.player.state_checker)))
         
         # gets the map data 
         map_data = n.getMap()
 
         # sets state checker back to 0 so server doesn't update map again
-        player1.state_checker = 0
+        self.player.state_checker = 0
 
         # creates the new map object for the game
         self.map.y_vars = read_map(map_data)
@@ -408,11 +425,11 @@ class Game:
         
         # sets the player client back to its starting position and sets the player clients state checker to 0
         player_data = read_data(n.getPos()+",0")
-        
+        print("Player data is : " + f"{player_data}")
+
         self.player.x = player_data[0]
         self.player.y = player_data[1]
         self.player.cursor_pos = (player_data[2], player_data[3])
-        self.player.state_checker = player_data[4]
         
         # removes all getInputs events from queue so no bomb objects 
         pygame.event.clear()
@@ -447,10 +464,23 @@ class Game:
 
 
     def end_game(self):
-        self.pause = 5
-        self.text = self.winner + " has won the game. Returning to Title Screen in "
 
+        # starts a 5 second count down for end of game 
+        for i in  range(5):
 
+            # updates screen again
+            DISPLAYSURF.fill(black)
+            self.text = f"{self.loser} has lost the game. You will be returned to main Menu in {5-i}"
+            
+            self.draw() 
+            pygame.display.flip()
+
+            time.sleep(1)
+        
+        # text and other variables reset and main menu program called
+        self.text = ""
+        self.pause = False
+        # HERE YOU CALL THE 
 
 
 # colours, represented by RGB colour codes stored as tuples
@@ -515,22 +545,32 @@ y_list = read_map(n.getMap())
 
 
 # chooses the player colour based on if the player connected first
+
+# if player joins first they are the red player and their UI is in the top left
 if n.id == "0":
     player_colour = red
     other_player_colour = blue
+    
+    
+    player_ui_x_coord = 0
+    other_player_ui_x_coord = DISPLAYSURF.get_width() -50
 
-
+# if the player joins the game second they are the blue player and their UI is in the top right
 else:
     player_colour = blue
     other_player_colour = red
-
+    
+    
+    player_ui_x_coord = DISPLAYSURF.get_width() -50
+    other_player_ui_x_coord = 0
+    
 #---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
 
 
 # player objects
-player1 = Player(startpos[0], startpos[1], 5, 5, player_colour)
-player2 = Player(0, 0, 5, 5, other_player_colour)
+player1 = Player(startpos[0], startpos[1], 5, 5, player_colour, player_ui_x_coord)
+player2 = Player(0, 0, 5, 5, other_player_colour, other_player_ui_x_coord)
 
 
 # terr is the map object

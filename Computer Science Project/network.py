@@ -10,7 +10,7 @@ class Network:
         
 
         # home wifi
-        self.server = "192.168.1.173"
+        self.server = "172.22.10.170"
         
         
         # school wifi IP below
@@ -31,19 +31,19 @@ class Network:
 
         self.id = self.data[0] # gets whether player is player 1 or player 2
 
-        self.pos = self.data[2:8] # gets the players position
+        self.pos = self.data[2:10] # gets the players position
 
-        self.cursor_pos = self.data[10:16] # gets the players cursor position
+        self.cursor_pos = self.data[11:19] # gets the players cursor position
 
-        self.state_checker = [18] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
+        self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
 
-        self.map = self.data[20:-1] # gets the map y variables for map pieces
+        self.map = self.data[22:-1] # gets the map y variables for map pieces
         
 
 
     # get functions -------------------------------------------------
     def getPos(self):
-        #print(self.pos + "," + self.cursor_pos)
+        print(self.pos + "," + self.cursor_pos)
         return self.pos + "," + self.cursor_pos
 
     def getCursor(self):
@@ -59,7 +59,7 @@ class Network:
         try:
             self.client.connect(self.addr)
             # decodes the data sent from the server
-            return self.client.recv(8192).decode() 
+            return self.client.recv(8192).decode()
         except:
             pass
     
@@ -73,6 +73,7 @@ class Network:
                 recv_data = self.client.recv(4096).decode()
                 self.data = recv_data
 
+            
             #if state checker is on "2" then the new map data is sent
             elif data[-1] == "2":
 
@@ -83,9 +84,7 @@ class Network:
                 recv_data_1 = self.client.recv(8192).decode()
                 recv_data_2 = self.client.recv(8192).decode()
             
-               
-
-                self.data = recv_data_1 + "," + recv_data_2
+                self.data = recv_data_1 + recv_data_2
 
             self.update_data()
 
@@ -97,10 +96,10 @@ class Network:
 
         self.id = self.data[0] # gets whether player is player 1 or player 2
 
-        self.pos = self.data[2:8] # gets the players position
+        self.pos = self.data[2:10] # gets the players position
 
-        self.cursor_pos = self.data[10:16] # gets the players cursor position
+        self.cursor_pos = self.data[11:19] # gets the players cursor position
 
-        self.state_checker = [18] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
+        self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
 
-        self.map = self.data[20:-1] # gets the map y variables for map pieces
+        self.map = self.data[22:-1] # gets the map y variables for map pieces

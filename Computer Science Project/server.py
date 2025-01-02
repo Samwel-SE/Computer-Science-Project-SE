@@ -8,7 +8,7 @@ import time
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
 
 # home wifi
-server = "192.168.1.173" 
+server = "0.0.0.0" 
 
 # only use below if on school wifi
 # server = "172.17.126.26"  
@@ -32,9 +32,10 @@ s.listen(2)
 
 print("Waiting for connection, Server Started")
 
+
 # starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
 # start_pos remains constant so players spawn in the same place at the start of each round
-start_pos = [(100,100,100,100,0), (400,100,400,100,0)]
+start_pos = [(100,100,100,100,0), (1000,100,1000,100,0)]
 
 # player data is updated as the round plays out which is why it is initially equal to start_pos as it changes
 player_data = start_pos
@@ -44,7 +45,7 @@ player_data = start_pos
 
 # generates list of y variables for pieces of map
 def generate_map():
-    y_list = perlinnoise.generate(1200, 40)
+    y_list = perlinnoise.generate(1300, 25)
     return y_list
 
 
@@ -70,19 +71,28 @@ def read_data(str):
     str = str.split(",")
     return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
 
+
+
 # encodes the data into string form to send to the clients
 def stringify_position_data(client_data):
-    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
+    stringified_data = []
+    for i in [0,2]:
+        if len(str(client_data[i])) < 4:
+            stringified_data.append("0" + str(client_data[i]))
+        else:
+            stringified_data.append(str(client_data[i]))
+    return stringified_data[0] + "," + str(client_data[1]) + "," + stringified_data[1] + "," + str(client_data[3]) + "," + str(client_data[4])
 # -----------------------------------------------------------------------------------------------------------------------------------------------#
 
 # pre game lobby map
-pre_game_map = [500] * 1200
+pre_game_map = [500] * 1300
 
 # maps for the rounds of the game
 map_1 = generate_map()
 map_2 = generate_map()
 map_3 = generate_map()
-
+map_4 = generate_map()
+map_5 = generate_map()
 
 
 # variables to control which map is displayed
@@ -122,9 +132,9 @@ def threaded_client(conn, client_num):
             # checks using the state checker variable recieved from client is in state 2 IE a player has been killed
             elif data[-1] == 2:
                 map_counter += 1  
-                
+                print("starting round pos " + f"{start_pos[client_num]}")
                 # turns the data to be sent into string so it can be encoded
-                data_to_be_sent = stringify_round_start_data(client_num, start_pos[client_num], maps[map_counter])
+                data_to_be_sent = stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])
 
                 # chunks the map data into two parts so it doesnt go over the huffer limit
                 data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
