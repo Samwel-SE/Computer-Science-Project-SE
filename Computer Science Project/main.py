@@ -7,8 +7,8 @@ from network import Network
 
 import time
 
-
 # THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
+
 
 # game object class, to be inherited by all other classes
 class GameObject:
@@ -62,6 +62,86 @@ class Map:
 
 
 
+# Title screen object
+class Title_Screen:
+
+    def __init__(self):
+        
+        # x coord of text so its alligned with center of screen
+        self.x_pos = DISPLAYSURF.get_width()//2 - 100
+
+        self.join_server_1_button = Button(self.x_pos, 300, 220, 30, white)
+
+        self.join_server_2_button = Button(self.x_pos, 400, 220, 30, white)
+
+        self.join_server_3_button = Button(self.x_pos, 500, 220, 30, white)
+
+        self.quit_game_button = Button(self.x_pos, 600, 220, 30, white)
+
+        self.title_screen_on = True
+
+
+    # to be called in the input function of game object
+    def handle_button_presses(self):
+
+        if self.join_server_1_button.on_click():
+            join_server("192.168.1.174", 5555)
+            self.title_screen_on = False
+
+        if self.join_server_2_button.on_click(): 
+            join_server("192.168.1.174", 6666)
+            self.title_screen_on = False
+
+        if self.join_server_3_button.on_click():
+            join_server("192.168.1.174", 7777)
+            self.title_screen_on = False
+
+        if self.quit_game_button.on_click():
+            quit()
+
+
+
+    # draws the title screen
+    def draw(self):
+        # draws game title 
+        DISPLAYSURF.blit(text.render("SQUARE OFF", False, white), (self.x_pos, 100))
+        
+        # draws join_server 1 button
+        DISPLAYSURF.blit(text.render("Join Server 1", False, white), (self.x_pos, 300))
+        self.join_server_1_button.draw()
+
+        # draws join_server 2 button
+        DISPLAYSURF.blit(text.render("Join Server 2", False, white), (self.x_pos, 400))
+        self.join_server_2_button.draw()
+
+        # draws join_server 3 button
+        DISPLAYSURF.blit(text.render("Join Server 3", False, white), (self.x_pos, 500))
+        self.join_server_3_button.draw()
+
+        # draws quit game button
+        DISPLAYSURF.blit(text.render("Quit Game", False, white), (self.x_pos, 600))
+        self.quit_game_button.draw()
+
+
+# button class is used in the title screen
+class Button(GameObject):
+
+    def __init__(self, x, y, width, height, colour):
+        super().__init__(x, y, width, height, colour)
+
+    # draws the border rectangle of the button, with 1 pixel border width
+    # this is why it cannot inherit draw method from parent as it doesn't fill rectangle
+    def draw(self):
+        pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height), 1)
+
+    def on_click(self):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if pygame.mouse.get_pressed(3) and (mouse_x > self.x and mouse_x < self.x +self.width) and (mouse_y > self.y and mouse_y < self.y + self.height):
+                return True
+
+
+
 # player class inherits gameobject class
 class Player(GameObject):
     
@@ -110,6 +190,8 @@ class Player(GameObject):
 
     # gets keys currently pressed so player character can move
     def inputs(self):
+
+        # movement inputs
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_d:
                 self.move_right = True
@@ -117,10 +199,6 @@ class Player(GameObject):
                 self.move_left = True
             if event.key == pygame.K_w and self.jumping == False:
                 self.jumping = True
-
-            # to swap through weapon list
-            if event.key == pygame.K_e:
-                self.current_weapon += 1
         
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_d:
@@ -243,159 +321,171 @@ class Bomb(GameObject):
 #all other objects are manipulated through the game object
 class Game:
 
-    def __init__(self, player, other_player, map):
+    def __init__(self, player, other_player, map, title_screen):
         
         #player objects
         self.player = player
         self.other_player = other_player
 
-        #map objects
+        #map object
         self.map = map
+
+        # title screen object
+        self.title_screen = title_screen
+
+        # when starting game this should be True
+        self.title_screen.title_screen_on = True
 
         self.screen_width = self.map.screen_width
 
         self.text = ""
         self.loser = ""
 
-        # pause state
-        self.pause = False
 
+        
+        
 
     # gets the player inputs
     def getsInputs(self): 
         
-        # only checks for player inputs when the game isn't paused
-        if not(self.pause):
+        if self.title_screen.title_screen_on:
+            self.title_screen.handle_button_presses()
+        else:
+            # only checks for player inputs when the game isn't paused
             self.player.inputs()
 
 
 
 
     def update(self):
+        if self.title_screen.title_screen_on:
+            pass
+        else:
 
-        # sends current players client data to server and recieves other players client data ----------------------------------->
+            # sends current players client data to server and recieves other players client data ----------------------------------->
 
-        # sends a receives player coords and player cursor coords
-        self.other_player.set_player(
-            read_data(
-                n.send( 
-                    make_data( 
-                        (round(self.player.x),               
-                        round(self.player.y),               
-                        round(self.player.cursor_pos[0]),   
-                        round(self.player.cursor_pos[1]),
-                        self.player.state_checker)))
-                        ))
-             
-        # sets state checker to 0 before bomb is updated so only one projectile is created for other client
-        self.player.state_checker = 0
-    # ----------------------------------------------------------------------------------------------------------->
-
-
-
-    # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
-        # checks if there are obstructions to player movement
-
-        if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
-            self.player.move_left = False 
+            # sends a receives player coords and player cursor coords
+            self.other_player.set_player(
+                read_data(
+                    n.send( 
+                        make_data( 
+                            (round(self.player.x),               
+                            round(self.player.y),               
+                            round(self.player.cursor_pos[0]),   
+                            round(self.player.cursor_pos[1]),
+                            self.player.state_checker)))
+                            ))
                 
-        if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
-            self.player.move_right = False
-
-        # jump command for player 
-        self.player.jump()
-        
-        # moves player left and right
-        if self.player.move_right:
-            self.player.x += 3
-        if self.player.move_left:
-            self.player.x -= 3  
-        
-            # checks for collision with map piecies below player
-        if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
-            self.player.y = self.map.map_pieces[self.player.x].y - 5
-            self.player.jumping = False
-            self.player.jump_vel = self.player.jump_height
-    # ----------------------------------------------------------------------------------------------------------------------->
-
-        # gets player cursor so bomb can be updated correctly
-        self.player.get_cursor(pygame.mouse.get_pos())
+            # sets state checker to 0 before bomb is updated so only one projectile is created for other client
+            self.player.state_checker = 0
+        # ----------------------------------------------------------------------------------------------------------->
 
 
-    # updates bomb ----------------------------------------------------------------------------------------------------------------->
-        for player in [self.player, self.other_player]:
-            for bomb in player.bombs:
-                bomb.move()
 
-                # collision for bombs and end of screen
-                if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0:
-                    bomb.explode()
-                
-                # code below means bomb will bounce after colliding with the map
-                elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
-                    if bomb.bounces > 0:
-                        bomb.bounce()
+        # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
+            # checks if there are obstructions to player movement
+
+            if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
+                self.player.move_left = False 
                     
-                    # and will explode if it doesn't have any bounces left
-                    else:
+            if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
+                self.player.move_right = False
+
+            # jump command for player 
+            self.player.jump()
+            
+            # moves player left and right
+            if self.player.move_right:
+                self.player.x += 3
+            if self.player.move_left:
+                self.player.x -= 3  
+            
+                # checks for collision with map piecies below player
+            if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
+                self.player.y = self.map.map_pieces[self.player.x].y - 5
+                self.player.jumping = False
+                self.player.jump_vel = self.player.jump_height
+        # ----------------------------------------------------------------------------------------------------------------------->
+
+            # gets player cursor so bomb can be updated correctly
+            self.player.get_cursor(pygame.mouse.get_pos())
+
+
+        # updates bomb ----------------------------------------------------------------------------------------------------------------->
+            for player in [self.player, self.other_player]:
+                for bomb in player.bombs:
+                    bomb.move()
+
+                    # collision for bombs and end of screen
+                    if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0:
                         bomb.explode()
-
-                        # gets collision with your own bomb explosion
-                        if bomb.exp_collision(self.player):
-                            
-                            # sets loser to you for correct text to be displayed
-                            self.loser = "You"
-                            # self.pause is on so player inputs arent recieved
-                            self.pause = True  
-
-                            # player loses life if it has been hit
-                            self.player.lives -= 1
-                            
-                            # when player has 0 lives end_game is called
-                            if self.player.lives == 0:
-                                self.end_game()
-
-                            # if the player has more than 0 lives game continues, end round called instead
-                            else:
-                                self.end_round()
+                    
+                    # code below means bomb will bounce after colliding with the map
+                    elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
+                        if bomb.bounces > 0:
+                            bomb.bounce()
                         
-                        # gets collision with other player bomb explosion
-                        elif bomb.exp_collision(self.other_player):
-                            self.loser = "They"
-                            self.pause = True
+                        # and will explode if it doesn't have any bounces left
+                        else:
+                            bomb.explode()
 
-                            # player loses a life once they are hit
-                            self.other_player.lives -= 1
+                            # gets collision with your own bomb explosion
+                            if bomb.exp_collision(self.player):
+                                
+                                # sets loser to you for correct text to be displayed
+                                self.loser = "You" 
+
+                                # player loses life if it has been hit
+                                self.player.lives -= 1
+                                
+                                # when player has 0 lives end_game is called
+                                if self.player.lives == 0:
+                                    self.end_game()
+
+                                # if the player has more than 0 lives game continues, end round called instead
+                                else:
+                                    self.end_round()
                             
-                            # when player has 0 lives the end_game is called
-                            if self.other_player.lives == 0:
-                                self.end_game()
+                            # gets collision with other player bomb explosion
+                            elif bomb.exp_collision(self.other_player):
+                                self.loser = "They"
+                                
 
-                            # if the player has more than 0 lives game continues, end round called instead
-                            else:
-                                self.end_round()
+                                # player loses a life once they are hit
+                                self.other_player.lives -= 1
+                                
+                                # when player has 0 lives the end_game is called
+                                if self.other_player.lives == 0:
+                                    self.end_game()
+
+                                # if the player has more than 0 lives game continues, end round called instead
+                                else:
+                                    self.end_round()
 
 
 
     def draw(self):
-        #draws player objects and map
-        self.map.draw()
-        self.player.draw()
-        self.other_player.draw()
-       
-        #draws bomb objects
-        for player in [self.player, self.other_player]:
-            for bomb in player.bombs:
-                bomb.draw()
-                
-                # deletes the bomb obj once it has exploded
-                if bomb.state == "exploded":
-                    player.bombs.pop()
+        if self.title_screen.title_screen_on:
+            self.title_screen.draw()
+        else: 
+            #draws player objects and map
+            self.map.draw()
+            self.player.draw()
+            self.other_player.draw()
+        
+            #draws bomb objects
+            for player in [self.player, self.other_player]:
+                for bomb in player.bombs:
+                    bomb.draw()
+                    
+                    # deletes the bomb obj once it has exploded
+                    if bomb.state == "exploded":
+                        player.bombs.pop()
 
 
 
-        # draws text for the ends of rounds and the end of the game
-        DISPLAYSURF.blit(end_round_text.render(self.text, False, white), (50, 200))
+            # draws text for the ends of rounds and the end of the game
+            DISPLAYSURF.blit(text.render(self.text, False, white), (DISPLAYSURF.get_width()//2 -100, 200))
 
     
     def start_game(self):
@@ -425,7 +515,6 @@ class Game:
         
         # sets the player client back to its starting position and sets the player clients state checker to 0
         player_data = read_data(n.getPos()+",0")
-        print("Player data is : " + f"{player_data}")
 
         self.player.x = player_data[0]
         self.player.y = player_data[1]
@@ -459,9 +548,11 @@ class Game:
         
         # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
         self.text = ""
-        self.pause = False
+        
+    
         self.start_round()
 
+    
 
     def end_game(self):
 
@@ -479,8 +570,66 @@ class Game:
         
         # text and other variables reset and main menu program called
         self.text = ""
-        self.pause = False
-        # HERE YOU CALL THE 
+        
+        # after the end game pause phase game returns to title screen 
+        self.title_screen.title_screen_on = True
+        pygame.mouse.set_visible(True)
+
+n = Network()
+
+def join_server(server_ip, server_address):
+    
+    n.assign_network_address(server_ip, server_address)
+    n.connect()
+    n.update_data()
+
+    # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
+    startpos = read_data(n.getPos()+",0")
+
+
+    # map will come as  a large list
+    y_list = read_map(n.getMap())
+
+
+    # chooses the player colour based on if the player connected first
+
+    # if player joins first they are the red player and their UI is in the top left
+    if n.id == "0":
+        player_colour = red
+        other_player_colour = blue
+        
+        player_ui_x_coord = 0
+        other_player_ui_x_coord = DISPLAYSURF.get_width() -50
+    
+    # if the player joins the game second they are the blue player and their UI is in the top right
+    else:
+        player_colour = blue
+        other_player_colour = red
+        
+        
+        player_ui_x_coord = DISPLAYSURF.get_width() -50
+        other_player_ui_x_coord = 0
+    
+    # sets the player objects up
+    player1.x, player1.y = startpos[0], startpos[1]
+    player1.colour = player_colour
+    player1.ui_x_coord = player_ui_x_coord
+
+    player2.x, player2.y = startpos[0], startpos[1]
+    player2.colour = other_player_colour
+    player2.ui_x_coord = other_player_ui_x_coord
+
+    # sets the map object up
+    terr.y_vars = read_map(n.getMap())
+    terr.create_map_obj()
+
+    # stops player from seeing mouse cursor so has to use in game cursor to aim
+    pygame.mouse.set_visible(False)
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+
+
 
 
 # colours, represented by RGB colour codes stored as tuples
@@ -507,9 +656,8 @@ DISPLAYSURF.fill(black)
 
 # initialises the font to be used
 pygame.font.init()
-the_font = pygame.font.SysFont("Arial", 10)
 
-end_round_text = pygame.font.SysFont("Arial", 20)
+text = pygame.font.SysFont("Arial", 20)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 # helper functions for getting data from the server
@@ -533,60 +681,26 @@ def read_map(decoded_string):
 
 
 
-# creates object of the network class to join to main server    
-n = Network()
-
-# n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
-startpos = read_data(n.getPos()+",0")
-
-
-# map will come as  a large list
-y_list = read_map(n.getMap())
-
-
-# chooses the player colour based on if the player connected first
-
-# if player joins first they are the red player and their UI is in the top left
-if n.id == "0":
-    player_colour = red
-    other_player_colour = blue
-    
-    
-    player_ui_x_coord = 0
-    other_player_ui_x_coord = DISPLAYSURF.get_width() -50
-
-# if the player joins the game second they are the blue player and their UI is in the top right
-else:
-    player_colour = blue
-    other_player_colour = red
-    
-    
-    player_ui_x_coord = DISPLAYSURF.get_width() -50
-    other_player_ui_x_coord = 0
-    
-#---------------------------------------------------------------------------------------------------------------------------------------------------------->
-
-
-
 # player objects
-player1 = Player(startpos[0], startpos[1], 5, 5, player_colour, player_ui_x_coord)
-player2 = Player(0, 0, 5, 5, other_player_colour, other_player_ui_x_coord)
+player1 = Player(0, 0, 5, 5, red, 0)
+player2 = Player(0, 0, 5, 5, red, 0)
 
 
 # terr is the map object
 terr = Map(green)
-terr.y_vars = y_list
+terr.y_vars = [0]
 
-terr.create_map_obj()
 
-# stops player from seeing mouse cursor
-#pygame.mouse.set_visible(False)
+# creates the title screen for the game where the user chooses to host, join or quit
+main_menu = Title_Screen()
 
-game = Game(player1, player2, terr)
+
+# initialises game object with 
+game = Game(player1, player2, terr, main_menu)
+game.start_game()
+
 
 Clock = pygame.time.Clock()
-
-game.start_game()
 
 # update loop --------------------------------------------------------------------------------------------------------------------------------------------->
 while True:

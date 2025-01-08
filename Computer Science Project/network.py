@@ -7,43 +7,36 @@ class Network:
 
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        self.server_ip = "0.0.0.0"
+        self.server_port = 4444
+        self.addr = (self.server_ip, self.server_port)
+
+        # these variables all start off not being used, but are utilised later
+
+        self.data = "" # sends the player data upon connection to server
+
+
+        self.id = "" # gets whether player is player 1 or player 2
+
+        self.pos = "" # gets the players position
+
+        self.cursor_pos = "" # gets the players cursor position
+
+        self.state_checker = "" # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
+
+        self.map = "" # gets the map y variables for map pieces
         
 
-        # home wifi
-        self.server = "172.22.10.170"
-        
-        
-        # school wifi IP below
-        # self.server = "172.17.126.26"
-        
-        # hotspot IP
-        #self.server = "172.20.10.3"
 
-        self.port = 5555
-        
-        self.addr = (self.server, self.port)
-
-        # begin game is set to true as when the client first connects the game has just began
-        self.begin_game = True 
-
-        self.data = self.connect() # sends the player data upon connection to server
-
-
-        self.id = self.data[0] # gets whether player is player 1 or player 2
-
-        self.pos = self.data[2:10] # gets the players position
-
-        self.cursor_pos = self.data[11:19] # gets the players cursor position
-
-        self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
-
-        self.map = self.data[22:-1] # gets the map y variables for map pieces
-        
-
+    # used for assigning the network obhect to the address of a specific server
+    def assign_network_address(self, ip, port):
+            self.server_ip = ip
+            self.server_port = port
+            self.addr = (self.server_ip, self.server_port)
 
     # get functions -------------------------------------------------
     def getPos(self):
-        print(self.pos + "," + self.cursor_pos)
         return self.pos + "," + self.cursor_pos
 
     def getCursor(self):
@@ -59,9 +52,10 @@ class Network:
         try:
             self.client.connect(self.addr)
             # decodes the data sent from the server
-            return self.client.recv(8192).decode()
+            self.data = self.client.recv(8192).decode()
+            print("THE DATA HAS BEEN RECIEVED " + f"{self.data}")
         except:
-            pass
+            print("failed to connect to that address")
     
             
     # client sending and recieving data from server 
