@@ -53,7 +53,6 @@ class Network:
             self.client.connect(self.addr)
             # decodes the data sent from the server
             self.data = self.client.recv(8192).decode()
-            print("THE DATA HAS BEEN RECIEVED " + f"{self.data}")
         except:
             print("failed to connect to that address")
     

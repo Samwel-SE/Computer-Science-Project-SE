@@ -121,26 +121,27 @@ def threaded_client(conn, client_num):
                 #print("Sending: ", reply) for testing server sending
             
             
+            
             # if a player hasnt died that state doesn't change and so player just recieves data as normal
             if data[-1] != 2:
                 conn.sendall(str.encode(stringify_position_data(reply)))
 
+            if currentClient == 2:
             # checks using the state checker variable recieved from client is in state 2 IE a player has been killed
-            elif data[-1] == 2:
-                map_counter += 1  
-                print("starting round pos " + f"{start_pos[client_num]}")
-                # turns the data to be sent into string so it can be encoded
-                data_to_be_sent = stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])
+                if data[-1] == 2:
+                    map_counter += 1  
+                    # turns the data to be sent into string so it can be encoded
+                    data_to_be_sent = stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])
 
-                # chunks the map data into two parts so it doesnt go over the huffer limit
-                data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
-                data_to_be_sent_prt_2 = data_to_be_sent[4096:-1]
+                    # chunks the map data into two parts so it doesnt go over the huffer limit
+                    data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
+                    data_to_be_sent_prt_2 = data_to_be_sent[4096:-1]
 
-                print("sending new map")
+                    print("sending new map")
 
-                # sends the new map in two parts as stated above
-                conn.sendall(str.encode(data_to_be_sent_prt_1))
-                conn.sendall(str.encode(data_to_be_sent_prt_2))
+                    # sends the new map in two parts as stated above
+                    conn.sendall(str.encode(data_to_be_sent_prt_1))
+                    conn.sendall(str.encode(data_to_be_sent_prt_2))
 
         except:
             break

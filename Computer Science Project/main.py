@@ -85,15 +85,15 @@ class Title_Screen:
     def handle_button_presses(self):
 
         if self.join_server_1_button.on_click():
-            join_server("192.168.1.174", 5555)
+            join_server(5555)
             self.title_screen_on = False
 
         if self.join_server_2_button.on_click(): 
-            join_server("192.168.1.174", 6666)
+            join_server(6666)
             self.title_screen_on = False
 
         if self.join_server_3_button.on_click():
-            join_server("192.168.1.174", 7777)
+            join_server(7777)
             self.title_screen_on = False
 
         if self.quit_game_button.on_click():
@@ -208,9 +208,11 @@ class Player(GameObject):
 
         # Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object,
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if pygame.mouse.get_pressed(3) and len(self.bombs) == 0:
-                self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
-                self.state_checker = 1
+            
+            if other_player_joined():
+                if pygame.mouse.get_pressed(3) and len(self.bombs) == 0 and (self.state_checker != 9):
+                    self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
+                    self.state_checker = 1
 
 
     # player jump
@@ -227,6 +229,7 @@ class Player(GameObject):
 
     # gets coordinates of line making up player cursor
     def get_cursor(self, mouse_tuple):
+
         # diff dict stores the difference in x & y between cursor pos and mouse pos
         diff = {"x": abs(mouse_tuple[0] -self.x) *0.04, "y": abs(mouse_tuple[1] -self.y) *0.04}
         
@@ -361,7 +364,7 @@ class Game:
         if self.title_screen.title_screen_on:
             pass
         else:
-
+            
             # sends current players client data to server and recieves other players client data ----------------------------------->
 
             # sends a receives player coords and player cursor coords
@@ -577,19 +580,20 @@ class Game:
 
 n = Network()
 
-def join_server(server_ip, server_address):
+
+# change this to the hotspot IP address
+
+
+def join_server(server_address):
     
+    server_ip = "172.20.10.3"
+
     n.assign_network_address(server_ip, server_address)
     n.connect()
     n.update_data()
 
     # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
     startpos = read_data(n.getPos()+",0")
-
-
-    # map will come as  a large list
-    y_list = read_map(n.getMap())
-
 
     # chooses the player colour based on if the player connected first
 
@@ -628,7 +632,11 @@ def join_server(server_ip, server_address):
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
-
+# checks whether or not the other player has joined
+def other_player_joined():
+    if (player2.x -1000 == 0) and (player2.y -100 == 0):
+        return False
+    return True
 
 
 
