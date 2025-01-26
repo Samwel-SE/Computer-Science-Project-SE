@@ -1,7 +1,7 @@
 import socket
 from _thread import *
 import perlinnoise
-
+import sys
 
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
 
@@ -22,7 +22,7 @@ except socket.error as e:
 
 
 # listens for connections
-s.listen(2)
+s.listen(100)
 
 print("Server Started, Waiting for connection")
 
@@ -38,9 +38,18 @@ player_data = start_pos
 # -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------
 
 # generates list of y variables for pieces of map
-def generate_map():
-    y_list = perlinnoise.generate(1300, 25)
-    return y_list
+def generate_maps():
+    # pregame map isnt randomised 
+    pre_game_map = [500] * 1300
+    
+    map_1 = perlinnoise.generate(1300, 25)
+    map_2 = perlinnoise.generate(1300, 25)
+    map_3 = perlinnoise.generate(1300, 25)
+    map_4 = perlinnoise.generate(1300, 25)
+    map_5 = perlinnoise.generate(1300, 25)
+
+    # returns map in large list
+    return [pre_game_map, map_1, map_2, map_3, map_4, map_5]
 
 
 # puts map data into string form
@@ -79,43 +88,51 @@ def stringify_position_data(client_data):
     return stringified_data[0] + "," + str(client_data[1]) + "," + stringified_data[1] + "," + str(client_data[3]) + "," + str(client_data[4])
 # -----------------------------------------------------------------------------------------------------------------------------------------------#
 
-# pre game lobby map
-pre_game_map = [500] * 1300
 
-# maps for the rounds of the game
-map_1 = generate_map()
-map_2 = generate_map()
-map_3 = generate_map()
-map_4 = generate_map()
-map_5 = generate_map()
+# is called when we want to start sending and recieving player data with the client 
+
+def threaded_client(conn, client_num, maps):
 
 
-
-# variables to control which map is displayed
-maps = [pre_game_map, map_1, map_2, map_3, map_4, map_5]
-
-def threaded_client(conn, client_num):
     # the map counter variable controls which map is sent to the client from the maps list
     map_counter = 0
-    
+    global current_connections
     # sends player data to the player client and sends the map data to the player aswell
-    conn.send(str.encode(stringify_round_start_data(client_num, player_data[client_num],maps[map_counter])))
-    reply = ""
-
+    try: 
+        conn.send(str.encode(stringify_round_start_data(client_num, player_data[client_num],maps[map_counter])))
+        reply = ""
+    except:
+        conn.send(str.encode("server_full"))
+        current_connections -= 1
+        return "Lost connection, thread closed"
+    
     while True:
         try:
-            data = read_data(conn.recv(4096).decode())
-            player_data[client_num] = data
+            
+            # recieves data from client 
+            data = conn.recv(4096).decode()
 
-
-            if not(data):
+            # checks if there is data or if client wants to disconnect
+            if not(data) or data == "DISCONNECT":
+                
+                # disconnects client by breaking the while loop 
                 print("Disconnected")
                 break
-            else:
-                if client_num == 1:
-                    reply = player_data[0]
-                else: 
-                    reply = player_data[1]
+            
+
+            # data is converted into integer form and stored inside a list
+            # [0] and [1] are the clients x and y coords
+            # [2] and [3] are the clients cursors x and y coords
+            # [4] is the players state_checker variable: used to check if the player has shot a bomb 
+            data = read_data(data)
+            
+            
+            player_data[client_num] = data
+            
+            if client_num == 1:
+                reply = player_data[0]
+            else: 
+                reply = player_data[1]
                 
                 #print("recieved: ", data)  for testing server receiving
                 #print("Sending: ", reply) for testing server sending
@@ -126,7 +143,8 @@ def threaded_client(conn, client_num):
             if data[-1] != 2:
                 conn.sendall(str.encode(stringify_position_data(reply)))
 
-            if currentClient == 2:
+
+            if current_connections == 2:
             # checks using the state checker variable recieved from client is in state 2 IE a player has been killed
                 if data[-1] == 2:
                     map_counter += 1  
@@ -146,18 +164,33 @@ def threaded_client(conn, client_num):
         except:
             break
     
-    print("Lost Connection")
-    conn.close()
-    quit()
+    current_connections = 0
+    return "Lost connection thread closed"
+    
 
-currentClient = 0
-# while loop will continuously listen for connections
+
+def clients_join_server():
+    global current_connections
+    
+    maps = generate_maps()
+
+    # waits for two connections
+    for i in range(2):
+        print("waiting for connection")
+        conn, addr = s.accept()
+        
+        print("Connected to: ", addr)
+
+        start_new_thread(threaded_client, (conn, current_connections, maps))
+        current_connections += 1
+
+
+
+current_connections = 0
+
+
 while True:
-    # accepts any incoming connections and stores the conn and IP addr in the two variables
-    conn, addr = s.accept()
+    print("waiting for clients to join server")
+    clients_join_server()
 
-    print("Connected to: ", addr)
-
-    start_new_thread(threaded_client, (conn, currentClient))
-    currentClient += 1 
 

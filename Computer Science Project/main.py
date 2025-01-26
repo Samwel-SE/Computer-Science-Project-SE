@@ -85,16 +85,38 @@ class Title_Screen:
     def handle_button_presses(self):
 
         if self.join_server_1_button.on_click():
-            join_server(5555)
-            self.title_screen_on = False
+            
+            # you join the server 
+            if join_server(5555):
+                self.title_screen_on = False
+
+            # you dont join the server
+            else:
+                self.title_screen_on = True
+                self.join_server_1_button.error_text_on = True    
 
         if self.join_server_2_button.on_click(): 
-            join_server(6666)
-            self.title_screen_on = False
+            
+            # you join the server
+            if join_server(6666):
+                self.title_screen_on = False
+            
+            # you dont join the server
+            else:
+                self.title_screen_on = True
+                self.join_server_2_button.error_text_on = True
+        
 
         if self.join_server_3_button.on_click():
-            join_server(7777)
-            self.title_screen_on = False
+            
+            # you join the server
+            if join_server(7777):
+                self.title_screen_on = False
+                
+            # you dont join the server
+            else:
+                self.title_screen_on = True
+                self.join_server_3_button.error_text_on = True
 
         if self.quit_game_button.on_click():
             quit()
@@ -129,16 +151,23 @@ class Button(GameObject):
     def __init__(self, x, y, width, height, colour):
         super().__init__(x, y, width, height, colour)
 
+        self.error_text_on = False
+
     # draws the border rectangle of the button, with 1 pixel border width
     # this is why it cannot inherit draw method from parent as it doesn't fill rectangle
     def draw(self):
         pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height), 1)
+
+        if self.error_text_on:
+            DISPLAYSURF.blit(text.render("Server Full. Try Join another server", False, red), (self.x, self.y + 50))
 
     def on_click(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if event.type == pygame.MOUSEBUTTONDOWN:
             if pygame.mouse.get_pressed(3) and (mouse_x > self.x and mouse_x < self.x +self.width) and (mouse_y > self.y and mouse_y < self.y + self.height):
                 return True
+
+
 
 
 
@@ -173,7 +202,7 @@ class Player(GameObject):
         
         # Number of lives player has
         self.lives = 3
-
+        
 
 
     # adds drawing player cursor, life count and currently equipped weapon
@@ -333,6 +362,9 @@ class Game:
         #map object
         self.map = map
 
+        # life of the iterim round
+        self.ITERIM_ROUND_LIFE = 1
+
         # title screen object
         self.title_screen = title_screen
 
@@ -341,10 +373,8 @@ class Game:
 
         self.screen_width = self.map.screen_width
 
-        self.text = ""
+        self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.loser = ""
-
-
         
         
 
@@ -366,7 +396,6 @@ class Game:
         else:
             
             # sends current players client data to server and recieves other players client data ----------------------------------->
-
             # sends a receives player coords and player cursor coords
             self.other_player.set_player(
                 read_data(
@@ -437,10 +466,16 @@ class Game:
                                 
                                 # sets loser to you for correct text to be displayed
                                 self.loser = "You" 
-
-                                # player loses life if it has been hit
-                                self.player.lives -= 1
                                 
+
+                                # so a player doesnt lose a life in the interim round
+                                if self.ITERIM_ROUND_LIFE > 0:
+                                    self.ITERIM_ROUND_LIFE -= 1
+                                else:    
+                                    # player loses life if it has been hit
+                                    self.player.lives -= 1
+                                
+
                                 # when player has 0 lives end_game is called
                                 if self.player.lives == 0:
                                     self.end_game()
@@ -453,9 +488,12 @@ class Game:
                             elif bomb.exp_collision(self.other_player):
                                 self.loser = "They"
                                 
-
-                                # player loses a life once they are hit
-                                self.other_player.lives -= 1
+                                # so a player doesnt lose a life in the interim round
+                                if self.ITERIM_ROUND_LIFE > 0:
+                                    self.ITERIM_ROUND_LIFE -= 1
+                                else:    
+                                    # player loses life if it has been hit
+                                    self.other_player.lives -= 1
                                 
                                 # when player has 0 lives the end_game is called
                                 if self.other_player.lives == 0:
@@ -468,8 +506,13 @@ class Game:
 
 
     def draw(self):
+        
+        # draws title screen
         if self.title_screen.title_screen_on:
             self.title_screen.draw()
+
+
+
         else: 
             #draws player objects and map
             self.map.draw()
@@ -486,9 +529,9 @@ class Game:
                         player.bombs.pop()
 
 
-
-            # draws text for the ends of rounds and the end of the game
-            DISPLAYSURF.blit(text.render(self.text, False, white), (DISPLAYSURF.get_width()//2 -100, 200))
+        
+            # draws text for the begining of game, ends of rounds and the end of the game
+            DISPLAYSURF.blit(text.render(self.text, False, white), (200, 200))
 
     
     def start_game(self):
@@ -496,8 +539,9 @@ class Game:
 
 
     def start_round(self):
-        # sets state checker to 2 to tell server to send next map
+        # sets state checker to "2" to tell server to send next map
         self.player.state_checker = 2
+
         # sends a receives player coords and player cursor coords
         n.send( make_data( 
             (round(self.player.x),               
@@ -506,6 +550,8 @@ class Game:
              round(self.player.cursor_pos[1]),
              self.player.state_checker)))
         
+
+        print("new map data recieved")
         # gets the map data 
         map_data = n.getMap()
 
@@ -548,14 +594,11 @@ class Game:
 
             #pauses the game for a second
             time.sleep(1)
-        
+            
         # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
         self.text = ""
-        
-    
         self.start_round()
 
-    
 
     def end_game(self):
 
@@ -577,60 +620,68 @@ class Game:
         # after the end game pause phase game returns to title screen 
         self.title_screen.title_screen_on = True
         pygame.mouse.set_visible(True)
+        n.leave_server()
+
+
+
+# ----------------------------------------------------------------------- Networking --------------------------------------------------------
+
+# network object used to manage data being sent and recieved from the server
 
 n = Network()
 
 
-# change this to the hotspot IP address
-
-
 def join_server(server_address):
     
-    server_ip = "172.20.10.3"
+    server_ip = "192.168.1.174"
 
     n.assign_network_address(server_ip, server_address)
-    n.connect()
-    n.update_data()
+    if n.connect() == "connection success":
+        n.update_data()
 
-    # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
-    startpos = read_data(n.getPos()+",0")
+        # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
+        startpos = read_data(n.getPos()+",0")
 
-    # chooses the player colour based on if the player connected first
+        # chooses the player colour based on if the player connected first
 
-    # if player joins first they are the red player and their UI is in the top left
-    if n.id == "0":
-        player_colour = red
-        other_player_colour = blue
+        # if player joins first they are the red player and their UI is in the top left
+        if n.id == "0":
+            player_colour = red
+            other_player_colour = blue
+            
+            player_ui_x_coord = 0
+            other_player_ui_x_coord = DISPLAYSURF.get_width() -50
         
-        player_ui_x_coord = 0
-        other_player_ui_x_coord = DISPLAYSURF.get_width() -50
-    
-    # if the player joins the game second they are the blue player and their UI is in the top right
+        # if the player joins the game second they are the blue player and their UI is in the top right
+        else:
+            player_colour = blue
+            other_player_colour = red
+            
+            
+            player_ui_x_coord = DISPLAYSURF.get_width() -50
+            other_player_ui_x_coord = 0
+        
+        # sets the player objects up
+        player1.x, player1.y = startpos[0], startpos[1]
+        player1.colour = player_colour
+        player1.ui_x_coord = player_ui_x_coord
+
+        player2.x, player2.y = startpos[0], startpos[1]
+        player2.colour = other_player_colour
+        player2.ui_x_coord = other_player_ui_x_coord
+
+        # sets the map object up
+        terr.y_vars = read_map(n.getMap())
+        terr.create_map_obj()
+
+        # stops player from seeing mouse cursor so has to use in game cursor to aim
+        pygame.mouse.set_visible(False)
+        return True
     else:
-        player_colour = blue
-        other_player_colour = red
-        
-        
-        player_ui_x_coord = DISPLAYSURF.get_width() -50
-        other_player_ui_x_coord = 0
-    
-    # sets the player objects up
-    player1.x, player1.y = startpos[0], startpos[1]
-    player1.colour = player_colour
-    player1.ui_x_coord = player_ui_x_coord
+        return False
 
-    player2.x, player2.y = startpos[0], startpos[1]
-    player2.colour = other_player_colour
-    player2.ui_x_coord = other_player_ui_x_coord
 
-    # sets the map object up
-    terr.y_vars = read_map(n.getMap())
-    terr.create_map_obj()
 
-    # stops player from seeing mouse cursor so has to use in game cursor to aim
-    pygame.mouse.set_visible(False)
-
-#---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
 # checks whether or not the other player has joined
 def other_player_joined():
@@ -638,6 +689,38 @@ def other_player_joined():
         return False
     return True
 
+
+# helper functions for getting data from the server
+def read_data(str):
+    str = str.split(",")
+    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
+
+
+# converts client_data into strings 
+def make_data(client_data):
+    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
+
+
+# recieves the decoded string list that contains all the strings of every piece of the map and that converts all those strings into integers
+def read_map(decoded_string):
+    #array to hold integers
+    y_variables = []
+
+    # converts long string into list of strings
+    decoded_string = decoded_string.split(",")
+    
+    # converts every string in that list into integers 
+    for i in decoded_string:
+
+        # if there is no integer just ignores that array item
+        if not(i):
+            pass
+        else:
+            #appends the integer to the array
+            y_variables.append(int(i))
+    return y_variables
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
 
 # colours, represented by RGB colour codes stored as tuples
@@ -653,11 +736,7 @@ green = (0, 100, 10)
 pygame.init()
 
 # INITIALISING DISPLAY SURFACE
-#DISPLAYSURF = pygame.display.set_mode((600, 800))
 DISPLAYSURF = pygame.display.set_mode((1200, 800))
-
-
-# fullscreen off above for testing the multiplayer  
 DISPLAYSURF.fill(black)
 
 
@@ -667,25 +746,7 @@ pygame.font.init()
 
 text = pygame.font.SysFont("Arial", 20)
 
-# ----------------------------------------------------------------------- Networking --------------------------------------------------------
-# helper functions for getting data from the server
-def read_data(str):
-    str = str.split(",")
-    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
 
-
-def make_data(client_data):
-    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
-
-def read_map(decoded_string):
-    y_variables = []
-    decoded_string = decoded_string.split(",")
-    for i in decoded_string:
-        if not(i):
-            pass
-        else:
-            y_variables.append(int(i))
-    return y_variables
 
 
 
@@ -711,6 +772,7 @@ game.start_game()
 Clock = pygame.time.Clock()
 
 # update loop --------------------------------------------------------------------------------------------------------------------------------------------->
+
 while True:
     # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)

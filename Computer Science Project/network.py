@@ -31,9 +31,7 @@ class Network:
 
     # used for assigning the network obhect to the address of a specific server
     def assign_network_address(self, ip, port):
-            self.server_ip = ip
-            self.server_port = port
-            self.addr = (self.server_ip, self.server_port)
+        self.addr = (ip, port)
 
     # get functions -------------------------------------------------
     def getPos(self):
@@ -49,13 +47,19 @@ class Network:
 
     # client connecting to server
     def connect(self):
-        try:
-            self.client.connect(self.addr)
-            # decodes the data sent from the server
-            self.data = self.client.recv(8192).decode()
-        except:
-            print("failed to connect to that address")
-    
+        
+        # connects client to server
+        self.client.connect(self.addr)
+
+        # decodes the data sent from the server
+        self.data = self.client.recv(8192).decode()
+        
+        # checks if server is sending server full message and returns connection failure if it is full
+        if self.data == "server_full":
+            return "connection failure"
+        
+        # if the server isnt full instead return connection success 
+        return "connection success"
             
     # client sending and recieving data from server 
     def send(self, data):
@@ -96,3 +100,10 @@ class Network:
         self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
 
         self.map = self.data[22:-1] # gets the map y variables for map pieces
+
+
+
+    def leave_server(self):
+        # sends no data to the server telling the server that the client has disconnected
+        self.client.sendall(str.encode("DISCONNECT"))
+        print("client disconnect has been sent")
