@@ -621,19 +621,22 @@ class Game:
         self.title_screen.title_screen_on = True
         pygame.mouse.set_visible(True)
         n.leave_server()
+        
+        # deletes the network object so it can be recreated later
+        #n  = None
 
 
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 
-# network object used to manage data being sent and recieved from the server
-
-n = Network()
-
 
 def join_server(server_address):
     
-    server_ip = "192.168.1.174"
+    global n 
+
+    n = Network()
+
+    server_ip = "172.17.126.26"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":

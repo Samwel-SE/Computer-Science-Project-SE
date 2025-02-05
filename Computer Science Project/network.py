@@ -106,4 +106,5 @@ class Network:
     def leave_server(self):
         # sends no data to the server telling the server that the client has disconnected
         self.client.sendall(str.encode("DISCONNECT"))
+        self.client.close()
         print("client disconnect has been sent")

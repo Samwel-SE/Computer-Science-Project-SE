@@ -22,9 +22,8 @@ except socket.error as e:
 
 
 # listens for connections
-s.listen(100)
 
-print("Server Started, Waiting for connection")
+print("Server Started")
 
 
 # starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
@@ -97,6 +96,7 @@ def threaded_client(conn, client_num, maps):
     # the map counter variable controls which map is sent to the client from the maps list
     map_counter = 0
     global current_connections
+    
     # sends player data to the player client and sends the map data to the player aswell
     try: 
         conn.send(str.encode(stringify_round_start_data(client_num, player_data[client_num],maps[map_counter])))
@@ -171,9 +171,9 @@ def threaded_client(conn, client_num, maps):
 
 def clients_join_server():
     global current_connections
-    
     maps = generate_maps()
 
+    s.listen(2)
     # waits for two connections
     for i in range(2):
         print("waiting for connection")
