@@ -89,6 +89,7 @@ class Network:
         except socket.error as e:
             print(e)
 
+
     def update_data(self):
 
         self.id = self.data[0] # gets whether player is player 1 or player 2

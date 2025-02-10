@@ -161,13 +161,13 @@ class Button(GameObject):
         if self.error_text_on:
             DISPLAYSURF.blit(text.render("Server Full. Try Join another server", False, red), (self.x, self.y + 50))
 
+
+
     def on_click(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if event.type == pygame.MOUSEBUTTONDOWN:
             if pygame.mouse.get_pressed(3) and (mouse_x > self.x and mouse_x < self.x +self.width) and (mouse_y > self.y and mouse_y < self.y + self.height):
                 return True
-
-
 
 
 
@@ -272,11 +272,19 @@ class Player(GameObject):
         else: 
             self.bomb_dy = diff["y"]
         
+        # rounds the bomb dx and dy to the nearest integer
+        self.bomb_dx = round(self.bomb_dx) 
+        self.bomb_dy = round(self.bomb_dy)
+        
+        # then sets the coordinates of the cursor
         self.cursor_pos = [self.bomb_dx +self.x+2 , self.bomb_dy +self.y+2]
+
+        # and returns it
         return self.cursor_pos
 
     # function is used to control the client player in host players game
     def set_player(self, client_data):
+        
         # coords 
         self.x = client_data[0]
         self.y = client_data[1]
@@ -287,6 +295,7 @@ class Player(GameObject):
         # calculates dx and dy of player bomb
         self.bomb_dx = self.cursor_pos[0] -self.x-2
         self.bomb_dy = self.cursor_pos[1] -self.y-2
+
 
         # if clients bomb_init equals 1 it will append a bomb object to other_players bomb list so it is drawn on the screen
         if client_data[4] == 1:
@@ -301,31 +310,25 @@ class Bomb(GameObject):
         super().__init__(x, y, width, height, colour)
         
         # change in x and y Ie movement speed of bomb
-        self.dx = round(dx)
-        self.dy = round(dy)
+        self.dx = dx
+        self.dy = dy
         
         # radius of bomb explosion
         self.exp_rad = 50
         
-        # number of bounces bomb makes before exploding
-        self.bounces = 3
-
         # state of bomb: moving or exploded
         self.state = "moving"
 
 
     # movement of the bomb
     def move(self):
-        self.x += round(self.dx)
-        self.y += round(self.dy)
-        self.dy += 1
-    
 
-    # bounce function when bounces are greater than 0, dx and dy decrease to mimic how a ball would bounce
-    def bounce(self):
-        self.dx = self.dx * 0.7
-        self.dy = -(self.dy) * 0.7
-        self.bounces -= 1
+        # increments the bombs x coordinate
+        self.x += self.dx
+
+        # increments the bombs y coordinate
+        self.y += self.dy
+        self.dy += 1
 
 
     def draw(self):
@@ -391,6 +394,7 @@ class Game:
 
 
     def update(self):
+        
         if self.title_screen.title_screen_on:
             pass
         else:
@@ -445,7 +449,15 @@ class Game:
 
         # updates bomb ----------------------------------------------------------------------------------------------------------------->
             for player in [self.player, self.other_player]:
+                
+                
                 for bomb in player.bombs:
+                    
+                    # testing bomb coords
+                    #print("CLIENTS BOMB COORDS: " + f"{bomb.x, bomb.y}")
+
+
+
                     bomb.move()
 
                     # collision for bombs and end of screen
@@ -454,54 +466,49 @@ class Game:
                     
                     # code below means bomb will bounce after colliding with the map
                     elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
-                        if bomb.bounces > 0:
-                            bomb.bounce()
-                        
-                        # and will explode if it doesn't have any bounces left
-                        else:
-                            bomb.explode()
+                        bomb.explode()
 
-                            # gets collision with your own bomb explosion
-                            if bomb.exp_collision(self.player):
-                                
-                                # sets loser to you for correct text to be displayed
-                                self.loser = "You" 
-                                
-
-                                # so a player doesnt lose a life in the interim round
-                                if self.ITERIM_ROUND_LIFE > 0:
-                                    self.ITERIM_ROUND_LIFE -= 1
-                                else:    
-                                    # player loses life if it has been hit
-                                    self.player.lives -= 1
-                                
-
-                                # when player has 0 lives end_game is called
-                                if self.player.lives == 0:
-                                    self.end_game()
-
-                                # if the player has more than 0 lives game continues, end round called instead
-                                else:
-                                    self.end_round()
+                        # gets collision with your own bomb explosion
+                        if bomb.exp_collision(self.player):
                             
-                            # gets collision with other player bomb explosion
-                            elif bomb.exp_collision(self.other_player):
-                                self.loser = "They"
-                                
-                                # so a player doesnt lose a life in the interim round
-                                if self.ITERIM_ROUND_LIFE > 0:
-                                    self.ITERIM_ROUND_LIFE -= 1
-                                else:    
-                                    # player loses life if it has been hit
-                                    self.other_player.lives -= 1
-                                
-                                # when player has 0 lives the end_game is called
-                                if self.other_player.lives == 0:
-                                    self.end_game()
+                            # sets loser to you for correct text to be displayed
+                            self.loser = "You" 
+                            
 
-                                # if the player has more than 0 lives game continues, end round called instead
-                                else:
-                                    self.end_round()
+                            # so a player doesnt lose a life in the interim round
+                            if self.ITERIM_ROUND_LIFE > 0:
+                                self.ITERIM_ROUND_LIFE -= 1
+                            else:    
+                                # player loses life if it has been hit
+                                self.player.lives -= 1
+                            
+
+                            # when player has 0 lives end_game is called
+                            if self.player.lives == 0:
+                                self.end_game()
+
+                            # if the player has more than 0 lives game continues, end round called instead
+                            else:
+                                self.end_round()
+                        
+                        # gets collision with other player bomb explosion
+                        elif bomb.exp_collision(self.other_player):
+                            self.loser = "They"
+                            
+                            # so a player doesnt lose a life in the interim round
+                            if self.ITERIM_ROUND_LIFE > 0:
+                                self.ITERIM_ROUND_LIFE -= 1
+                            else:    
+                                # player loses life if it has been hit
+                                self.other_player.lives -= 1
+                            
+                            # when player has 0 lives the end_game is called
+                            if self.other_player.lives == 0:
+                                self.end_game()
+
+                            # if the player has more than 0 lives game continues, end round called instead
+                            else:
+                                self.end_round()
 
 
 
@@ -596,6 +603,8 @@ class Game:
             time.sleep(1)
             
         # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
+        self.player.jumping = False
+        self.other_player.jumping = False
         self.text = ""
         self.start_round()
 
@@ -607,7 +616,7 @@ class Game:
 
             # updates screen again
             DISPLAYSURF.fill(black)
-            self.text = f"{self.loser} has lost the game. You will be returned to main Menu in {5-i}"
+            self.text = f"{self.loser} have lost the game. You will be returned to main Menu in {5-i}"
             
             self.draw() 
             pygame.display.flip()
@@ -621,9 +630,8 @@ class Game:
         self.title_screen.title_screen_on = True
         pygame.mouse.set_visible(True)
         n.leave_server()
-        
-        # deletes the network object so it can be recreated later
-        #n  = None
+        self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
+        self.player.lives = self.other_player.lives = 3
 
 
 

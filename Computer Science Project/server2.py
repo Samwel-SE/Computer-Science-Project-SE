@@ -3,16 +3,19 @@ from _thread import *
 import perlinnoise
 import sys
 
+
+
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
 
 
 # home wifi
 server = "0.0.0.0" 
 
-# server 2 port
+# server 1 port
 port = 6666
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
 try:
     s.bind((server, port))
@@ -26,12 +29,12 @@ except socket.error as e:
 print("Server Started")
 
 
-# starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
+
+# player data begins with starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
 # start_pos remains constant so players spawn in the same place at the start of each round
-start_pos = [(100,100,100,100,0), (1000,100,1000,100,0)]
 
 # player data is updated as the round plays out which is why it is initially equal to start_pos as it changes
-player_data = start_pos
+player_data = [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)]
 
 
 # -------------------------------------------------------------------- used for sending map data to clients -----------------------------------------------------
@@ -99,8 +102,9 @@ def threaded_client(conn, client_num, maps):
     
     # sends player data to the player client and sends the map data to the player aswell
     try: 
-        conn.send(str.encode(stringify_round_start_data(client_num, player_data[client_num],maps[map_counter])))
+        conn.send(str.encode(stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])))
         reply = ""
+
     except:
         conn.send(str.encode("server_full"))
         current_connections -= 1
