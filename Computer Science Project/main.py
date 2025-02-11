@@ -365,8 +365,8 @@ class Game:
         #map object
         self.map = map
 
-        # life of the iterim round
-        self.ITERIM_ROUND_LIFE = 1
+        # life of the interim round
+        self.interim_round_life = 1
 
         # title screen object
         self.title_screen = title_screen
@@ -476,8 +476,8 @@ class Game:
                             
 
                             # so a player doesnt lose a life in the interim round
-                            if self.ITERIM_ROUND_LIFE > 0:
-                                self.ITERIM_ROUND_LIFE -= 1
+                            if self.interim_round_life > 0:
+                                self.interim_round_life -= 1
                             else:    
                                 # player loses life if it has been hit
                                 self.player.lives -= 1
@@ -496,8 +496,8 @@ class Game:
                             self.loser = "They"
                             
                             # so a player doesnt lose a life in the interim round
-                            if self.ITERIM_ROUND_LIFE > 0:
-                                self.ITERIM_ROUND_LIFE -= 1
+                            if self.interim_round_life > 0:
+                                self.interim_round_life -= 1
                             else:    
                                 # player loses life if it has been hit
                                 self.other_player.lives -= 1
@@ -632,6 +632,7 @@ class Game:
         n.leave_server()
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
+        self.interim_round_life = 1
 
 
 
@@ -644,7 +645,12 @@ def join_server(server_address):
 
     n = Network()
 
-    server_ip = "172.17.126.26"
+    
+    #home ip
+    server_ip =  "192.168.1.174"
+
+    #school ip
+    #server_ip = "172.17.126.26"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
@@ -742,7 +748,7 @@ white = (255, 255, 255)
 green = (0, 100, 10)
 
 
-
+ 
 # pygame initialisation
 pygame.init()
 
@@ -750,6 +756,7 @@ pygame.init()
 DISPLAYSURF = pygame.display.set_mode((1200, 800))
 DISPLAYSURF.fill(black)
 
+pygame.display.set_caption('SQUARE OFF')
 
 
 # initialises the font to be used
