@@ -377,7 +377,7 @@ class Game:
         self.screen_width = self.map.screen_width
 
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
-        self.loser = ""
+
         
         
 
@@ -448,16 +448,13 @@ class Game:
 
 
         # updates bomb ----------------------------------------------------------------------------------------------------------------->
-            for player in [self.player, self.other_player]:
+            for p in [self.player, self.other_player]:
                 
                 
-                for bomb in player.bombs:
+                for bomb in p.bombs:
                     
                     # testing bomb coords
                     #print("CLIENTS BOMB COORDS: " + f"{bomb.x, bomb.y}")
-
-
-
                     bomb.move()
 
                     # collision for bombs and end of screen
@@ -468,48 +465,27 @@ class Game:
                     elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
                         bomb.explode()
 
-                        # gets collision with your own bomb explosion
-                        if bomb.exp_collision(self.player):
-                            
-                            # sets loser to you for correct text to be displayed
-                            self.loser = "You" 
-                            
 
-                            # so a player doesnt lose a life in the interim round
-                            if self.interim_round_life > 0:
-                                self.interim_round_life -= 1
-                            else:    
-                                # player loses life if it has been hit
-                                self.player.lives -= 1
-                            
+                        for player in [self.player, self.other_player]:
+                            # for when a player is within explosion radius
+                            if bomb.exp_collision(player):
+                                
+                                # so a player doesnt lose a life in the interim round
+                                if self.interim_round_life > 0:
+                                    self.interim_round_life -= 1
 
-                            # when player has 0 lives end_game is called
-                            if self.player.lives == 0:
-                                self.end_game()
+                                else:    
+                                    # player loses life if it has been hit
+                                    player.lives -= 1
+                                
 
-                            # if the player has more than 0 lives game continues, end round called instead
-                            else:
-                                self.end_round()
-                        
-                        # gets collision with other player bomb explosion
-                        elif bomb.exp_collision(self.other_player):
-                            self.loser = "They"
-                            
-                            # so a player doesnt lose a life in the interim round
-                            if self.interim_round_life > 0:
-                                self.interim_round_life -= 1
-                            else:    
-                                # player loses life if it has been hit
-                                self.other_player.lives -= 1
-                            
-                            # when player has 0 lives the end_game is called
-                            if self.other_player.lives == 0:
-                                self.end_game()
+                                # when player has 0 lives the end_game is called
+                                if player.lives == 0:
+                                    self.end_game()
 
-                            # if the player has more than 0 lives game continues, end round called instead
-                            else:
-                                self.end_round()
-
+                                # if the player has more than 0 lives game continues, end round called instead
+                                else:
+                                    self.end_round()
 
 
     def draw(self):
@@ -591,7 +567,7 @@ class Game:
             DISPLAYSURF.fill(black)
             
             # displays count down text
-            self.text = f"{self.loser} have lost the round. Next Round starting in {5-i}"
+            self.text = f"A player has lost the round. Next Round starting in {5-i}"
 
             #draws text once round has ended
             self.draw()
@@ -616,7 +592,7 @@ class Game:
 
             # updates screen again
             DISPLAYSURF.fill(black)
-            self.text = f"{self.loser} have lost the game. You will be returned to main Menu in {5-i}"
+            self.text = f"A player has lost the game. You will be returned to Main Menu in {5-i}"
             
             self.draw() 
             pygame.display.flip()
