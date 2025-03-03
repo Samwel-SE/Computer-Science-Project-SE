@@ -620,13 +620,16 @@ def join_server(server_address):
     global n 
 
     n = Network()
-
+    
     
     #home ip
-    server_ip =  "192.168.1.174"
+    #server_ip =  "192.168.1.174"
 
     #school ip
-    #server_ip = "172.17.126.26"
+    server_ip = "172.17.126.26"
+
+    #hotspot ip
+    #server_ip = "172.20.10.3"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
