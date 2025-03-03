@@ -161,7 +161,7 @@ def threaded_client(conn, client_num, maps):
                     data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
                     data_to_be_sent_prt_2 = data_to_be_sent[4096:-1]
 
-                    print("sending new map")
+                    #print("sending new map")
 
                     # sends the new map in two parts as stated above
                     conn.sendall(str.encode(data_to_be_sent_prt_1))

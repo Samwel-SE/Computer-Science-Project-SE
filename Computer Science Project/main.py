@@ -405,12 +405,16 @@ class Game:
                 read_data(
                     n.send( 
                         make_data( 
-                            (round(self.player.x),               
-                            round(self.player.y),               
-                            round(self.player.cursor_pos[0]),   
-                            round(self.player.cursor_pos[1]),
-                            self.player.state_checker)))
-                            ))
+                            (self.player.x,               
+                             self.player.y,               
+                             self.player.cursor_pos[0],   
+                             self.player.cursor_pos[1],
+                             self.player.state_checker
+                            )
+                        )
+                    )
+                )
+             )
                 
             # sets state checker to 0 before bomb is updated so only one projectile is created for other client
             self.player.state_checker = 0
@@ -462,7 +466,7 @@ class Game:
                         bomb.explode()
                     
                     # code below means bomb will bounce after colliding with the map
-                    elif bomb.collision(self.map.map_pieces[round(bomb.x)]):
+                    elif bomb.collision(self.map.map_pieces[bomb.x]):
                         bomb.explode()
 
 
@@ -527,11 +531,13 @@ class Game:
 
         # sends a receives player coords and player cursor coords
         n.send( make_data( 
-            (round(self.player.x),               
-             round(self.player.y),               
-             round(self.player.cursor_pos[0]),   
-             round(self.player.cursor_pos[1]),
-             self.player.state_checker)))
+            (self.player.x,               
+             self.player.y,               
+             self.player.cursor_pos[0],   
+             self.player.cursor_pos[1],
+             self.player.state_checker
+            )
+        ) )
         
 
         print("new map data recieved")
@@ -606,6 +612,7 @@ class Game:
         self.title_screen.title_screen_on = True
         pygame.mouse.set_visible(True)
         n.leave_server()
+        
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
         self.interim_round_life = 1
@@ -626,10 +633,10 @@ def join_server(server_address):
     #server_ip =  "192.168.1.174"
 
     #school ip
-    server_ip = "172.17.126.26"
+    #server_ip = "172.17.126.26"
 
     #hotspot ip
-    #server_ip = "172.20.10.3"
+    server_ip = "172.20.10.3"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
