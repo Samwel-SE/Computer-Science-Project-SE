@@ -35,7 +35,7 @@ class Network:
 
     # get functions -------------------------------------------------
     def getPos(self):
-        return self.pos + "," + self.cursor_pos
+        return self.pos + "," + self.cursor_pos + ",0"
 
     def getCursor(self):
         return self.cursor_pos
@@ -62,14 +62,13 @@ class Network:
         return "connection success"
             
     # client sending and recieving data from server 
-    def send(self, data):
+    def transfer(self, data):
         try:
             # uses data[-1] ie state checker to see if new map data needs to be sent
             if data[-1] != "2":
                 self.client.send(str.encode(data))      
-                recv_data = self.client.recv(4096).decode()
-                self.data = recv_data
-
+                self.data = self.client.recv(4096).decode()
+                
             
             #if state checker is on "2" then the new map data is sent
             elif data[-1] == "2":
@@ -77,20 +76,19 @@ class Network:
                 self.client.send(str.encode(data))
                 
                 # chunks the map data into 2 parts as to not go over the buffer limit
-
                 recv_data_1 = self.client.recv(8192).decode()
                 recv_data_2 = self.client.recv(8192).decode()
             
                 self.data = recv_data_1 + recv_data_2
 
-            self.update_data()
-
+            self.update_client_data_for_network()
             return self.data
+        
         except socket.error as e:
             print(e)
 
 
-    def update_data(self):
+    def update_client_data_for_network(self):
 
         self.id = self.data[0] # gets whether player is player 1 or player 2
 

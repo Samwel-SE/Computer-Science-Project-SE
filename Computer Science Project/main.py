@@ -240,7 +240,6 @@ class Player(GameObject):
             
             if other_player_joined():
                 if pygame.mouse.get_pressed(3) and len(self.bombs) == 0 and (self.state_checker != 9):
-                    self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
                     self.state_checker = 1
 
 
@@ -283,7 +282,7 @@ class Player(GameObject):
         return self.cursor_pos
 
     # function is used to control the client player in host players game
-    def set_player(self, client_data):
+    def set_player_variables(self, client_data):
         
         # coords 
         self.x = client_data[0]
@@ -292,13 +291,19 @@ class Player(GameObject):
         # cursor coords
         self.cursor_pos = [client_data[2], client_data[3]]
         
-        # calculates dx and dy of player bomb
-        self.bomb_dx = self.cursor_pos[0] -self.x-2
-        self.bomb_dy = self.cursor_pos[1] -self.y-2
+        # state checker
+        self.state_checker = client_data[4]
 
-
+    # checks whether bomb needs to be created
+    def check_bomb_creation(self, bomb_creation_on_1):
+        
         # if clients bomb_init equals 1 it will append a bomb object to other_players bomb list so it is drawn on the screen
-        if client_data[4] == 1:
+        if bomb_creation_on_1 == 1:
+            
+            # calculates dx and dy of player bomb from cursor_position
+            self.bomb_dx = self.cursor_pos[0] -self.x-2
+            self.bomb_dy = self.cursor_pos[1] -self.y-2
+            
             self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
 
 
@@ -391,36 +396,36 @@ class Game:
             self.player.inputs()
 
 
+    # transfers clients data and map data
+    def transfer_data(self):
+        
 
+        
+        return n.transfer( 
+                    make_data(
+                        (
+                        self.player.x,               
+                        self.player.y,               
+                        self.player.cursor_pos[0],   
+                        self.player.cursor_pos[1],
+                        self.player.state_checker
+                        )                        
+                    )
+                )
+            
+    
 
+    # updates the objects in the game
     def update(self):
         
         if self.title_screen.title_screen_on:
             pass
         else:
             
-            # sends current players client data to server and recieves other players client data ----------------------------------->
-            # sends a receives player coords and player cursor coords
-            self.other_player.set_player(
-                read_data(
-                    n.send( 
-                        make_data( 
-                            (self.player.x,               
-                             self.player.y,               
-                             self.player.cursor_pos[0],   
-                             self.player.cursor_pos[1],
-                             self.player.state_checker
-                            )
-                        )
-                    )
-                )
-             )
-                
-            # sets state checker to 0 before bomb is updated so only one projectile is created for other client
-            self.player.state_checker = 0
-        # ----------------------------------------------------------------------------------------------------------->
-
-
+            # transfers player data and updates the enemy clients player on your screen
+            self.other_player.set_player_variables(
+                read_data(self.transfer_data())
+            )
 
         # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
             # checks if there are obstructions to player movement
@@ -440,7 +445,7 @@ class Game:
             if self.player.move_left:
                 self.player.x -= 3  
             
-                # checks for collision with map piecies below player
+            # checks for collision with map piecies below player
             if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
                 self.player.y = self.map.map_pieces[self.player.x].y - 5
                 self.player.jumping = False
@@ -450,6 +455,10 @@ class Game:
             # gets player cursor so bomb can be updated correctly
             self.player.get_cursor(pygame.mouse.get_pos())
 
+            # checks whether bombs are created for the players
+            self.player.check_bomb_creation(self.player.state_checker)
+            self.player.state_checker = 0
+            self.other_player.check_bomb_creation(self.other_player.state_checker)
 
         # updates bomb ----------------------------------------------------------------------------------------------------------------->
             for p in [self.player, self.other_player]:
@@ -529,18 +538,9 @@ class Game:
         # sets state checker to "2" to tell server to send next map
         self.player.state_checker = 2
 
-        # sends a receives player coords and player cursor coords
-        n.send( make_data( 
-            (self.player.x,               
-             self.player.y,               
-             self.player.cursor_pos[0],   
-             self.player.cursor_pos[1],
-             self.player.state_checker
-            )
-        ) )
+        # then sends data to server which sends back new map as game is going into next round
+        self.transfer_data()
         
-
-        print("new map data recieved")
         # gets the map data 
         map_data = n.getMap()
 
@@ -552,37 +552,30 @@ class Game:
         self.map.create_map_obj()
         
         # sets the player client back to its starting position and sets the player clients state checker to 0
-        player_data = read_data(n.getPos()+",0")
-
-        self.player.x = player_data[0]
-        self.player.y = player_data[1]
-        self.player.cursor_pos = (player_data[2], player_data[3])
+        player_data = read_data(n.getPos())
+        self.player.set_player_variables(player_data)
         
         # removes all getInputs events from queue so no bomb objects 
         pygame.event.clear()
 
+    
+    # pauses the game for 5 seconds and renders end round / game text
+    def pause_game(self):
         
+        for i in range(5):
+            
+            # adds the time length left of timer to the end round text
+            self.text = self.text + " " + str(5-i)
+            DISPLAYSURF.fill(black)
 
+            self.draw()
+            pygame.display.flip()
+            time.sleep(1)
 
     def end_round(self):
         
-        # starts a 5 second count down
-        for i in range(5):
-            
-            # fills screen so stuff is not drawn over itself
-            DISPLAYSURF.fill(black)
-            
-            # displays count down text
-            self.text = f"A player has lost the round. Next Round starting in {5-i}"
-
-            #draws text once round has ended
-            self.draw()
-
-            #updates the screen
-            pygame.display.flip()
-
-            #pauses the game for a second
-            time.sleep(1)
+        self.text = f"A player has lost the round. Next Round starting in "
+        self.pause_game()
             
         # then sets the text back to nothing so text is not drawn whilst game is running and starts the next round
         self.player.jumping = False
@@ -593,30 +586,13 @@ class Game:
 
     def end_game(self):
 
+        self.text = "A player has lost the game. You will be returned to Main Menu in "
         # starts a 5 second count down for end of game 
-        for i in  range(5):
-
-            # updates screen again
-            DISPLAYSURF.fill(black)
-            self.text = f"A player has lost the game. You will be returned to Main Menu in {5-i}"
-            
-            self.draw() 
-            pygame.display.flip()
-
-            time.sleep(1)
-        
-        # text and other variables reset and main menu program called
-        self.text = ""
-        
-        # after the end game pause phase game returns to title screen 
-        self.title_screen.title_screen_on = True
-        pygame.mouse.set_visible(True)
-        n.leave_server()
+        self.pause_game()
         
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
         self.interim_round_life = 1
-
 
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
@@ -628,22 +604,18 @@ def join_server(server_address):
 
     n = Network()
     
-    
-    #home ip
-    #server_ip =  "192.168.1.174"
-
     #school ip
     #server_ip = "172.17.126.26"
-
-    #hotspot ip
-    server_ip = "172.20.10.3"
+    
+    #home ip 
+    server_ip = "192.168.1.174"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
-        n.update_data()
+        n.update_client_data_for_network()
 
         # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
-        startpos = read_data(n.getPos()+",0")
+        startpos = read_data(n.getPos())
 
         # chooses the player colour based on if the player connected first
 
@@ -697,7 +669,7 @@ def other_player_joined():
 def read_data(str):
     str = str.split(",")
     return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
-
+    
 
 # converts client_data into strings 
 def make_data(client_data):
@@ -749,9 +721,6 @@ pygame.display.set_caption('SQUARE OFF')
 pygame.font.init()
 
 text = pygame.font.SysFont("Arial", 20)
-
-
-
 
 
 # player objects
