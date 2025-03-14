@@ -5,6 +5,8 @@ from pygame.locals import QUIT
 
 from network import Network
 
+
+from networkfunctions import convert_recv_client_data_to_int, convert_client_data_to_string, convert_recv_map_data_to_int
 import time
 
 # THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
@@ -398,11 +400,9 @@ class Game:
 
     # transfers clients data and map data
     def transfer_data(self):
-        
-
-        
+    
         return n.transfer( 
-                    make_data(
+                    convert_client_data_to_string(
                         (
                         self.player.x,               
                         self.player.y,               
@@ -412,9 +412,7 @@ class Game:
                         )                        
                     )
                 )
-            
     
-
     # updates the objects in the game
     def update(self):
         
@@ -424,7 +422,7 @@ class Game:
             
             # transfers player data and updates the enemy clients player on your screen
             self.other_player.set_player_variables(
-                read_data(self.transfer_data())
+                convert_recv_client_data_to_int(self.transfer_data())
             )
 
         # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
@@ -548,11 +546,11 @@ class Game:
         self.player.state_checker = 0
 
         # creates the new map object for the game
-        self.map.y_vars = read_map(map_data)
+        self.map.y_vars = convert_recv_map_data_to_int(map_data)
         self.map.create_map_obj()
         
         # sets the player client back to its starting position and sets the player clients state checker to 0
-        player_data = read_data(n.getPos())
+        player_data = convert_recv_client_data_to_int(n.getPos())
         self.player.set_player_variables(player_data)
         
         # removes all getInputs events from queue so no bomb objects 
@@ -590,10 +588,14 @@ class Game:
         # starts a 5 second count down for end of game 
         self.pause_game()
         
+
+        self.title_screen.title_screen_on = True
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
         self.interim_round_life = 1
-
+        
+        # turns the mouse back on so player can interact with the title screen
+        pygame.mouse.set_visible(True)
 
 # ----------------------------------------------------------------------- Networking --------------------------------------------------------
 
@@ -605,48 +607,42 @@ def join_server(server_address):
     n = Network()
     
     #school ip
-    #server_ip = "172.17.126.26"
+    server_ip = "172.17.126.26"
     
     #home ip 
-    server_ip = "192.168.1.174"
+    #server_ip = "192.168.1.174"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
         n.update_client_data_for_network()
 
         # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
-        startpos = read_data(n.getPos())
+        startpos = convert_recv_client_data_to_int(n.getPos())
 
         # chooses the player colour based on if the player connected first
 
         # if player joins first they are the red player and their UI is in the top left
         if n.id == "0":
-            player_colour = red
-            other_player_colour = blue
+            player1.colour = red
+            player2.colour = blue
             
-            player_ui_x_coord = 0
-            other_player_ui_x_coord = DISPLAYSURF.get_width() -50
+            player1.ui_x_coord = 0
+            player2.ui_x_coord = DISPLAYSURF.get_width() -50
         
         # if the player joins the game second they are the blue player and their UI is in the top right
         else:
-            player_colour = blue
-            other_player_colour = red
+            player1.colour = blue
+            player2.colour = red
             
-            
-            player_ui_x_coord = DISPLAYSURF.get_width() -50
-            other_player_ui_x_coord = 0
+            player1.ui_x_coord = DISPLAYSURF.get_width() -50
+            player2.ui_x_coord = 0
         
         # sets the player objects up
         player1.x, player1.y = startpos[0], startpos[1]
-        player1.colour = player_colour
-        player1.ui_x_coord = player_ui_x_coord
-
         player2.x, player2.y = startpos[0], startpos[1]
-        player2.colour = other_player_colour
-        player2.ui_x_coord = other_player_ui_x_coord
 
         # sets the map object up
-        terr.y_vars = read_map(n.getMap())
+        terr.y_vars = convert_recv_map_data_to_int(n.getMap())
         terr.create_map_obj()
 
         # stops player from seeing mouse cursor so has to use in game cursor to aim
@@ -657,7 +653,6 @@ def join_server(server_address):
 
 
 
-
 # checks whether or not the other player has joined
 def other_player_joined():
     if (player2.x -1000 == 0) and (player2.y -100 == 0):
@@ -665,35 +660,6 @@ def other_player_joined():
     return True
 
 
-# helper functions for getting data from the server
-def read_data(str):
-    str = str.split(",")
-    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
-    
-
-# converts client_data into strings 
-def make_data(client_data):
-    return str(client_data[0]) + "," + str(client_data[1]) + "," + str(client_data[2]) + "," + str(client_data[3]) + "," + str(client_data[4])
-
-
-# recieves the decoded string list that contains all the strings of every piece of the map and that converts all those strings into integers
-def read_map(decoded_string):
-    #array to hold integers
-    y_variables = []
-
-    # converts long string into list of strings
-    decoded_string = decoded_string.split(",")
-    
-    # converts every string in that list into integers 
-    for i in decoded_string:
-
-        # if there is no integer just ignores that array item
-        if not(i):
-            pass
-        else:
-            #appends the integer to the array
-            y_variables.append(int(i))
-    return y_variables
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------->
 
