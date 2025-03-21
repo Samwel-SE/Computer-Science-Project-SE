@@ -6,7 +6,7 @@ from pygame.locals import QUIT
 from network import Network
 
 
-from networkfunctions import convert_recv_client_data_to_int, convert_client_data_to_string, convert_recv_map_data_to_int
+from helperfunctions import convert_recv_client_data_to_int, convert_client_data_to_string, convert_recv_map_data_to_int
 import time
 
 # THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ class Map:
     def __init__(self, colour):
         self.screen_width = DISPLAYSURF.get_width()
         self.colour = colour
-        self.map_pieces = []
+        self.pieces = []
 
         # stores y variables of all the objects making up the map
         self.y_vars = 0
@@ -53,14 +53,15 @@ class Map:
 
     # creates map obj
     def create_map_obj(self):
-        self.map_pieces.clear()
+        self.pieces.clear()
         for i in range(len(self.y_vars)):
-            self.map_pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
+            self.pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
 
     # iterates through and draws all the gameobjects making up the map
     def draw(self):
         for i in range(len(self.y_vars)):
-            self.map_pieces[i].draw()
+            self.pieces[i].draw()
+
 
 
 
@@ -76,9 +77,7 @@ class Title_Screen:
 
         self.join_server_2_button = Button(self.x_pos, 400, 220, 30, white)
 
-        self.join_server_3_button = Button(self.x_pos, 500, 220, 30, white)
-
-        self.quit_game_button = Button(self.x_pos, 600, 220, 30, white)
+        self.quit_game_button = Button(self.x_pos, 500, 220, 30, white)
 
         self.title_screen_on = True
 
@@ -107,18 +106,6 @@ class Title_Screen:
             else:
                 self.title_screen_on = True
                 self.join_server_2_button.error_text_on = True
-        
-
-        if self.join_server_3_button.on_click():
-            
-            # you join the server
-            if join_server(7777):
-                self.title_screen_on = False
-                
-            # you dont join the server
-            else:
-                self.title_screen_on = True
-                self.join_server_3_button.error_text_on = True
 
         if self.quit_game_button.on_click():
             quit()
@@ -138,12 +125,9 @@ class Title_Screen:
         DISPLAYSURF.blit(text.render("Join Server 2", False, white), (self.x_pos, 400))
         self.join_server_2_button.draw()
 
-        # draws join_server 3 button
-        DISPLAYSURF.blit(text.render("Join Server 3", False, white), (self.x_pos, 500))
-        self.join_server_3_button.draw()
 
         # draws quit game button
-        DISPLAYSURF.blit(text.render("Quit Game", False, white), (self.x_pos, 600))
+        DISPLAYSURF.blit(text.render("Quit Game", False, white), (self.x_pos, 500))
         self.quit_game_button.draw()
 
 
@@ -164,7 +148,7 @@ class Button(GameObject):
             DISPLAYSURF.blit(text.render("Server Full. Try Join another server", False, red), (self.x, self.y + 50))
 
 
-
+    # runs certain code once the button has been pressed
     def on_click(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -172,7 +156,7 @@ class Button(GameObject):
                 return True
 
 
-
+#### PLAYER OBJECT #############################################################################################################
 # player class inherits gameobject class
 class Player(GameObject):
     
@@ -206,7 +190,6 @@ class Player(GameObject):
         self.lives = 3
         
 
-
     # adds drawing player cursor, life count and currently equipped weapon
     def draw(self):
         super().draw()
@@ -217,6 +200,32 @@ class Player(GameObject):
         #draws player live count
         for i in range(self.lives):
             pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10 + self.ui_x_coord, 0, 5, 10))
+
+
+    # upates the position of the player
+    def update(self, pieces):
+        
+        # collision between parts of terrain that are too high for the player to climb or the edge of the screen
+        if (self.y > pieces[self.x -3].y +2) or self.x <= 10:
+            self.move_left = False 
+                    
+        elif (self.y > pieces[self.x +3].y +2) or self.x >= DISPLAYSURF.get_width() -10:
+            self.move_right = False
+
+        # jump command for player 
+        self.jump()
+        
+        # moves player left and right
+        if self.move_right:
+            self.x += 3
+        if self.move_left:
+            self.x -= 3
+
+        # collision so that player does not fall through the map
+        if self.collision(pieces[self.x]) or self.collision(pieces[self.x + self.width]):
+                self.y = pieces[self.x].y - 5
+                self.jumping = False
+                self.jump_vel = self.jump_height
 
 
     # gets keys currently pressed so player character can move
@@ -283,6 +292,7 @@ class Player(GameObject):
         # and returns it
         return self.cursor_pos
 
+
     # function is used to control the client player in host players game
     def set_player_variables(self, client_data):
         
@@ -296,6 +306,7 @@ class Player(GameObject):
         # state checker
         self.state_checker = client_data[4]
 
+
     # checks whether bomb needs to be created
     def check_bomb_creation(self, bomb_creation_on_1):
         
@@ -308,7 +319,10 @@ class Player(GameObject):
             
             self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
 
+########################################################################################################################################
 
+
+###### BOMB OBJECT ###########################################################################################################################
 
 # Bomb class, inherits Game Object Class
 class Bomb(GameObject):
@@ -328,7 +342,7 @@ class Bomb(GameObject):
 
 
     # movement of the bomb
-    def move(self):
+    def update(self, pieces):
 
         # increments the bombs x coordinate
         self.x += self.dx
@@ -336,6 +350,16 @@ class Bomb(GameObject):
         # increments the bombs y coordinate
         self.y += self.dy
         self.dy += 1
+
+        # collision for bombs and end of screen
+        if self.x >= DISPLAYSURF.get_width() or self.x <= 0:
+            self.explode()
+        
+
+        # code below means bomb will bounce after colliding with the map
+        elif self.collision(pieces[self.x]):
+            self.explode()
+
 
 
     def draw(self):
@@ -357,13 +381,15 @@ class Bomb(GameObject):
         if ((self.x -1)- obj2.x) ** 2 + ((self.y +1) - obj2.y) ** 2 <= self.exp_rad**2:
             return True
 
+##############################################################################################################################################
+
 
 
 
 #all other objects are manipulated through the game object
 class Game:
 
-    def __init__(self, player, other_player, map, title_screen):
+    def __init__(self, player, other_player, map):
         
         #player objects
         self.player = player
@@ -375,12 +401,6 @@ class Game:
         # life of the interim round
         self.interim_round_life = 1
 
-        # title screen object
-        self.title_screen = title_screen
-
-        # when starting game this should be True
-        self.title_screen.title_screen_on = True
-
         self.screen_width = self.map.screen_width
 
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
@@ -390,12 +410,8 @@ class Game:
 
     # gets the player inputs
     def getsInputs(self): 
-        
-        if self.title_screen.title_screen_on:
-            self.title_screen.handle_button_presses()
-        else:
-            # only checks for player inputs when the game isn't paused
-            self.player.inputs()
+        # only checks for player inputs when the game isn't paused
+        self.player.inputs()
 
 
     # transfers clients data and map data
@@ -416,111 +432,71 @@ class Game:
     # updates the objects in the game
     def update(self):
         
-        if self.title_screen.title_screen_on:
-            pass
-        else:
-            
-            # transfers player data and updates the enemy clients player on your screen
-            self.other_player.set_player_variables(
-                convert_recv_client_data_to_int(self.transfer_data())
-            )
+        # transfers player data and updates the enemy clients player on your screen
 
-        # UPDATES PLAYER CLIENT POSITION ---------------------------------------------------------------------------------------->
-            # checks if there are obstructions to player movement
+        self.other_player.set_player_variables(
+            convert_recv_client_data_to_int(self.transfer_data())
+        )
 
-            if (self.player.y > self.map.map_pieces[self.player.x -3].y +2) or self.player.x <= 10:
-                self.player.move_left = False 
-                    
-            if (self.player.y > self.map.map_pieces[self.player.x +3].y +2) or self.player.x >= DISPLAYSURF.get_width() -10:
-                self.player.move_right = False
+        
+        # updates player position
+        self.player.update(self.map.pieces)
 
-            # jump command for player 
-            self.player.jump()
-            
-            # moves player left and right
-            if self.player.move_right:
-                self.player.x += 3
-            if self.player.move_left:
-                self.player.x -= 3  
-            
-            # checks for collision with map piecies below player
-            if self.player.collision(self.map.map_pieces[self.player.x]) or self.player.collision(self.map.map_pieces[self.player.x + self.player.width]):
-                self.player.y = self.map.map_pieces[self.player.x].y - 5
-                self.player.jumping = False
-                self.player.jump_vel = self.player.jump_height
-        # ----------------------------------------------------------------------------------------------------------------------->
 
-            # gets player cursor so bomb can be updated correctly
-            self.player.get_cursor(pygame.mouse.get_pos())
+        # gets player cursor so bomb can be updated correctly
+        self.player.get_cursor(pygame.mouse.get_pos())
 
-            # checks whether bombs are created for the players
-            self.player.check_bomb_creation(self.player.state_checker)
-            self.player.state_checker = 0
-            self.other_player.check_bomb_creation(self.other_player.state_checker)
+
+        # checks whether bombs are created for the players
+        self.player.check_bomb_creation(self.player.state_checker)
+        self.player.state_checker = 0
+        self.other_player.check_bomb_creation(self.other_player.state_checker)
+
 
         # updates bomb ----------------------------------------------------------------------------------------------------------------->
-            for p in [self.player, self.other_player]:
+        for p in [self.player, self.other_player]:
+            
+            for bomb in p.bombs:
                 
+                bomb.update(self.map.pieces)
                 
-                for bomb in p.bombs:
-                    
-                    # testing bomb coords
-                    #print("CLIENTS BOMB COORDS: " + f"{bomb.x, bomb.y}")
-                    bomb.move()
+                for player in [self.player, self.other_player]:
+                    # for when a player is within explosion radius
+                    if bomb.exp_collision(player) and bomb.state == "exploded":
+                        
+                        # so a player doesnt lose a life in the interim round
+                        if self.interim_round_life > 0:
+                            self.interim_round_life -= 1
 
-                    # collision for bombs and end of screen
-                    if bomb.x >= DISPLAYSURF.get_width() or bomb.x <= 0:
-                        bomb.explode()
-                    
-                    # code below means bomb will bounce after colliding with the map
-                    elif bomb.collision(self.map.map_pieces[bomb.x]):
-                        bomb.explode()
+                        else:    
+                            # player loses life if it has been hit
+                            player.lives -= 1
+                        
 
+                        # when player has 0 lives the end_game is called
+                        if player.lives == 0:
+                            self.end_game()
 
-                        for player in [self.player, self.other_player]:
-                            # for when a player is within explosion radius
-                            if bomb.exp_collision(player):
-                                
-                                # so a player doesnt lose a life in the interim round
-                                if self.interim_round_life > 0:
-                                    self.interim_round_life -= 1
-
-                                else:    
-                                    # player loses life if it has been hit
-                                    player.lives -= 1
-                                
-
-                                # when player has 0 lives the end_game is called
-                                if player.lives == 0:
-                                    self.end_game()
-
-                                # if the player has more than 0 lives game continues, end round called instead
-                                else:
-                                    self.end_round()
+                        # if the player has more than 0 lives game continues, end round called instead
+                        else:
+                            self.end_round()
 
 
     def draw(self):
         
-        # draws title screen
-        if self.title_screen.title_screen_on:
-            self.title_screen.draw()
-
-
-
-        else: 
-            #draws player objects and map
-            self.map.draw()
-            self.player.draw()
-            self.other_player.draw()
-        
-            #draws bomb objects
-            for player in [self.player, self.other_player]:
-                for bomb in player.bombs:
-                    bomb.draw()
-                    
-                    # deletes the bomb obj once it has exploded
-                    if bomb.state == "exploded":
-                        player.bombs.pop()
+        #draws player objects and map
+        self.map.draw()
+        self.player.draw()
+        self.other_player.draw()
+    
+        #draws bomb objects
+        for player in [self.player, self.other_player]:
+            for bomb in player.bombs:
+                bomb.draw()
+                
+                # deletes the bomb obj once it has exploded
+                if bomb.state == "exploded":
+                    player.bombs.pop()
 
 
         
@@ -583,13 +559,16 @@ class Game:
 
 
     def end_game(self):
-
+        
         self.text = "A player has lost the game. You will be returned to Main Menu in "
         # starts a 5 second count down for end of game 
         self.pause_game()
         
+        n.leave_server()
 
-        self.title_screen.title_screen_on = True
+        global main_menu
+        main_menu.title_screen_on = True
+
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
         self.interim_round_life = 1
@@ -704,11 +683,12 @@ main_menu = Title_Screen()
 
 
 # initialises game object with 
-game = Game(player1, player2, terr, main_menu)
+game = Game(player1, player2, terr)
 game.start_game()
 
 
 Clock = pygame.time.Clock()
+
 
 # update loop --------------------------------------------------------------------------------------------------------------------------------------------->
 
@@ -721,10 +701,22 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-        game.getsInputs()
+        
 
-    game.update()
-    game.draw()
+        if main_menu.title_screen_on:
+            main_menu.handle_button_presses()
+        
+        
+        else:
+            game.getsInputs()
+    
+    if main_menu.title_screen_on:
+        main_menu.draw()
+    
+    
+    else:
+        game.update()
+        game.draw()
 
 
     pygame.display.flip()

@@ -2,7 +2,7 @@ import socket
 from _thread import *
 import perlinnoise
 import sys
-from networkfunctions import convert_round_start_data_to_string, convert_client_position_data_to_string, convert_recv_client_data_to_int
+from helperfunctions import convert_round_start_data_to_string, convert_client_position_data_to_string, convert_recv_client_data_to_int
 
 
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#

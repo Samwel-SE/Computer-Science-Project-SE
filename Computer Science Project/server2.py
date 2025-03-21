@@ -2,7 +2,7 @@ import socket
 from _thread import *
 import perlinnoise
 import sys
-
+from helperfunctions import convert_round_start_data_to_string, convert_client_position_data_to_string, convert_recv_client_data_to_int
 
 
 # ---------------------------- THIS IS A SCRIPT I HAVE MODIFIED, THE ORIGINAL SCRIPT IS WRITTEN BY TECH WITH TIM ---------------------------#
@@ -11,7 +11,7 @@ import sys
 # home wifi
 server = "0.0.0.0" 
 
-# server 1 port
+# server 2 port
 port = 6666
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -31,7 +31,9 @@ print("Server Started")
 
 
 # player data begins with starting positions of the players and their cursors Ie player.x, player.y, cursor.x, cursor.y
-# start_pos remains constant so players spawn in the same place at the start of each round
+# starting_player_data remains constant so players spawn in the same place at the start of each round with same conditions 
+starting_player_data = [(100, 100, 100, 100, 0), (1000, 100, 1000, 100, 0)]
+
 
 # player data is updated as the round plays out which is why it is initially equal to start_pos as it changes
 player_data = [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)]
@@ -54,43 +56,6 @@ def generate_maps():
     return [pre_game_map, map_1, map_2, map_3, map_4, map_5]
 
 
-# puts map data into string form
-def stringify_map(y_list):
-    encoded_string = ""
-    for i in y_list: 
-        encoded_string = encoded_string + str(i) + ","
-    encoded_string = encoded_string[:-1]
-    return encoded_string
-
-
-# function for sending map data as a string to clients to be decoded
-def stringify_round_start_data(client_id, client_data, map_data):
-    return str(client_id) + "," + stringify_position_data(client_data) + "," + stringify_map(map_data)
-
-# ---------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-# ------------------- helper functions for encoding and decoding data --------------------------------------------------------------------------#
-# decodes the data from string form
-def read_data(str):
-    str = str.split(",")
-    return int(str[0]), int(str[1]), int(str[2]), int(str[3]), int(str[4])
-
-
-
-# encodes the data into string form to send to the clients
-def stringify_position_data(client_data):
-    stringified_data = []
-    for i in [0,2]:
-        if len(str(client_data[i])) < 4:
-            stringified_data.append("0" + str(client_data[i]))
-        else:
-            stringified_data.append(str(client_data[i]))
-    return stringified_data[0] + "," + str(client_data[1]) + "," + stringified_data[1] + "," + str(client_data[3]) + "," + str(client_data[4])
-# -----------------------------------------------------------------------------------------------------------------------------------------------#
-
-
 # is called when we want to start sending and recieving player data with the client 
 
 def threaded_client(conn, client_num, maps):
@@ -102,7 +67,7 @@ def threaded_client(conn, client_num, maps):
     
     # sends player data to the player client and sends the map data to the player aswell
     try: 
-        conn.send(str.encode(stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])))
+        conn.send(str.encode(convert_round_start_data_to_string(client_num, starting_player_data[client_num], maps[map_counter])))
         reply = ""
 
     except:
@@ -128,7 +93,7 @@ def threaded_client(conn, client_num, maps):
             # [0] and [1] are the clients x and y coords
             # [2] and [3] are the clients cursors x and y coords
             # [4] is the players state_checker variable: used to check if the player has shot a bomb 
-            data = read_data(data)
+            data = convert_recv_client_data_to_int(data)
             
             
             player_data[client_num] = data
@@ -145,7 +110,7 @@ def threaded_client(conn, client_num, maps):
             
             # if a player hasnt died that state doesn't change and so player just recieves data as normal
             if data[-1] != 2:
-                conn.sendall(str.encode(stringify_position_data(reply)))
+                conn.sendall(str.encode(convert_client_position_data_to_string(reply)))
 
 
             if current_connections == 2:
@@ -153,13 +118,13 @@ def threaded_client(conn, client_num, maps):
                 if data[-1] == 2:
                     map_counter += 1  
                     # turns the data to be sent into string so it can be encoded
-                    data_to_be_sent = stringify_round_start_data(client_num, [(100, 100, 100, 100, 0),(1000, 100, 1000, 100, 0)][client_num], maps[map_counter])
+                    data_to_be_sent = convert_round_start_data_to_string(client_num, starting_player_data[client_num], maps[map_counter])
 
                     # chunks the map data into two parts so it doesnt go over the huffer limit
                     data_to_be_sent_prt_1 = data_to_be_sent[0:4096]
                     data_to_be_sent_prt_2 = data_to_be_sent[4096:-1]
 
-                    print("sending new map")
+                    #print("sending new map")
 
                     # sends the new map in two parts as stated above
                     conn.sendall(str.encode(data_to_be_sent_prt_1))
