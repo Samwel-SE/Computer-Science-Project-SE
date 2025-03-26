@@ -79,7 +79,7 @@ class Title_Screen:
 
         self.quit_game_button = Button(self.x_pos, 500, 220, 30, white)
 
-        self.title_screen_on = True
+        self.open = True
 
 
     # to be called in the input function of game object
@@ -89,22 +89,20 @@ class Title_Screen:
             
             # you join the server 
             if join_server(5555):
-                self.title_screen_on = False
+                self.open = False
 
             # you dont join the server
             else:
-                self.title_screen_on = True
                 self.join_server_1_button.error_text_on = True    
 
         if self.join_server_2_button.on_click(): 
             
             # you join the server
             if join_server(6666):
-                self.title_screen_on = False
+                self.open = False
             
             # you dont join the server
             else:
-                self.title_screen_on = True
                 self.join_server_2_button.error_text_on = True
 
         if self.quit_game_button.on_click():
@@ -504,10 +502,6 @@ class Game:
             DISPLAYSURF.blit(text.render(self.text, False, white), (200, 200))
 
     
-    def start_game(self):
-        pass
-
-
     def start_round(self):
         # sets state checker to "2" to tell server to send next map
         self.player.state_checker = 2
@@ -567,7 +561,7 @@ class Game:
         n.leave_server()
 
         global main_menu
-        main_menu.title_screen_on = True
+        main_menu.open = True
 
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
@@ -684,42 +678,51 @@ main_menu = Title_Screen()
 
 # initialises game object with 
 game = Game(player1, player2, terr)
-game.start_game()
 
 
 Clock = pygame.time.Clock()
 
 
-# update loop --------------------------------------------------------------------------------------------------------------------------------------------->
+def Quitting_Game(trigger):
+    if trigger.type == "QUIT":
+        pygame.quit()
+        sys.exit()
+
+# MAIN GAME LOOP ################################################################################
 
 while True:
     # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)
 
-    # gets key preses and button presses
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
-        
-
-        if main_menu.title_screen_on:
+    if main_menu.open:
+        for event in pygame.event.get():
+            #quits the game
+            Quitting_Game(event)
             main_menu.handle_button_presses()
         
-        
-        else:
-            game.getsInputs()
-    
-    if main_menu.title_screen_on:
+        # draws the title screen
         main_menu.draw()
-    
+        pygame.display.flip()
+
+        
+        # tick rate is set to 60: screen is updated 60 times a second
+        Clock.tick(60)
     
     else:
+        # gets key preses and button presses
+        for event in pygame.event.get():
+            # quits the game
+            Quitting_Game(event)
+
+            #gets the inputs from clients machine
+            game.getsInputs()
+
+        # updates game
         game.update()
+
+        #draws the game and its agregate objects
         game.draw()
-
-
-    pygame.display.flip()
-
-    # tick rate is set to 60: screen is updated 60 times a second
-    Clock.tick(60)
+        pygame.display.flip()
+      
+        # tick rate is set to 60: screen is updated 60 times a second
+        Clock.tick(60)
