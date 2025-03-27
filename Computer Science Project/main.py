@@ -430,13 +430,7 @@ class Game:
     # updates the objects in the game
     def update(self):
         
-        # transfers player data and updates the enemy clients player on your screen
 
-        self.other_player.set_player_variables(
-            convert_recv_client_data_to_int(self.transfer_data())
-        )
-
-        
         # updates player position
         self.player.update(self.map.pieces)
 
@@ -447,7 +441,6 @@ class Game:
 
         # checks whether bombs are created for the players
         self.player.check_bomb_creation(self.player.state_checker)
-        self.player.state_checker = 0
         self.other_player.check_bomb_creation(self.other_player.state_checker)
 
 
@@ -478,6 +471,15 @@ class Game:
                         # if the player has more than 0 lives game continues, end round called instead
                         else:
                             self.end_round()
+
+        # transfers player data and updates the enemy clients player on your screen
+
+        self.other_player.set_player_variables(
+            convert_recv_client_data_to_int(self.transfer_data())
+        ) 
+
+        # resets state checker back to 0 at the end of every update loop so that only bomb object is created
+        self.player.state_checker = 0
 
 
     def draw(self):
@@ -694,6 +696,8 @@ while True:
     # fills the screen black again so sprties actually move
     DISPLAYSURF.fill(black)
 
+
+    # only runs this code if the main menu of the game is open
     if main_menu.open:
         for event in pygame.event.get():
             #quits the game
@@ -708,6 +712,8 @@ while True:
         # tick rate is set to 60: screen is updated 60 times a second
         Clock.tick(60)
     
+
+    # runs this code when the main menu is closed Ie playing the game after joining a server
     else:
         # gets key preses and button presses
         for event in pygame.event.get():
