@@ -187,17 +187,45 @@ class Player(GameObject):
         # Number of lives player has
         self.lives = 3
         
+    
 
-    # adds drawing player cursor, life count and currently equipped weapon
-    def draw(self):
-        super().draw()
+    # gets keys currently pressed so player character can move
+    def inputs(self):
 
-        # draws players cursor
-        pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.cursor_pos,1)
+        # movement inputs
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_d:
+                self.move_right = True
+            if event.key == pygame.K_a:
+                self.move_left = True
+            if event.key == pygame.K_w and self.jumping == False:
+                self.jumping = True
+        
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_d:
+                self.move_right = False
+            if event.key == pygame.K_a:
+                self.move_left = False
 
-        #draws player live count
-        for i in range(self.lives):
-            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10 + self.ui_x_coord, 0, 5, 10))
+        # Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object,
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            
+            if other_player_joined():
+                if pygame.mouse.get_pressed(3) and len(self.bombs) == 0 and (self.state_checker != 9):
+                    self.state_checker = 1
+    
+
+    # player jump
+    def jump(self):
+        if self.jumping:
+            # jump_vel goes from positive to negative during jump function allowing player to fall back down to the ground.
+            self.y -= self.jump_vel
+            self.jump_vel -= 1
+
+        # while player has not pressed jump key they will constantly move downwards as to not break game
+        else:
+            self.y += 5
+
 
 
     # upates the position of the player
@@ -226,43 +254,9 @@ class Player(GameObject):
                 self.jump_vel = self.jump_height
 
 
-    # gets keys currently pressed so player character can move
-    def inputs(self):
 
-        # movement inputs
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_d:
-                self.move_right = True
-            if event.key == pygame.K_a:
-                self.move_left = True
-            if event.key == pygame.K_w and self.jumping == False:
-                self.jumping = True
-        
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_d:
-                self.move_right = False
-            if event.key == pygame.K_a:
-                self.move_left = False
-
-        # Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object,
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            
-            if other_player_joined():
-                if pygame.mouse.get_pressed(3) and len(self.bombs) == 0 and (self.state_checker != 9):
-                    self.state_checker = 1
-
-
-    # player jump
-    def jump(self):
-        if self.jumping:
-            # jump_vel goes from positive to negative during jump function allowing player to fall back down to the ground.
-            self.y -= self.jump_vel
-            self.jump_vel -= 1
-
-        # while player has not pressed jump key they will constantly move downwards as to not break game
-        else:
-            self.y += 5
-
+        # then gets the coords of the players cursor
+        self.get_cursor(pygame.mouse.get_pos())
 
     # gets coordinates of line making up player cursor
     def get_cursor(self, mouse_tuple):
@@ -291,6 +285,22 @@ class Player(GameObject):
         return self.cursor_pos
 
 
+
+
+    # checks whether bomb needs to be created
+    def check_bomb_creation(self, bomb_creation_on_1):
+        
+        # if clients bomb_init equals 1 it will append a bomb object to other_players bomb list so it is drawn on the screen
+        if bomb_creation_on_1 == 1:
+            
+            # calculates dx and dy of player bomb from cursor_position
+            self.bomb_dx = self.cursor_pos[0] -self.x-2
+            self.bomb_dy = self.cursor_pos[1] -self.y-2
+            
+            self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
+
+    
+
     # function is used to control the client player in host players game
     def set_player_variables(self, client_data):
         
@@ -305,17 +315,17 @@ class Player(GameObject):
         self.state_checker = client_data[4]
 
 
-    # checks whether bomb needs to be created
-    def check_bomb_creation(self, bomb_creation_on_1):
-        
-        # if clients bomb_init equals 1 it will append a bomb object to other_players bomb list so it is drawn on the screen
-        if bomb_creation_on_1 == 1:
-            
-            # calculates dx and dy of player bomb from cursor_position
-            self.bomb_dx = self.cursor_pos[0] -self.x-2
-            self.bomb_dy = self.cursor_pos[1] -self.y-2
-            
-            self.bombs.append(Bomb(self.x + 2, self.y + 2, 3, 3, (255, 255, 0), self.bomb_dx, self.bomb_dy))
+
+    # adds drawing player cursor, life count and currently equipped weapon
+    def draw(self):
+        super().draw()
+
+        # draws players cursor
+        pygame.draw.line(DISPLAYSURF, self.colour, (self.x + 2, self.y + 2), self.cursor_pos,1)
+
+        #draws player live count
+        for i in range(self.lives):
+            pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.lives + i*10 + self.ui_x_coord, 0, 5, 10))
 
 ########################################################################################################################################
 
@@ -396,8 +406,8 @@ class Game:
         #map object
         self.map = map
 
-        # life of the interim round
-        self.interim_round_life = 1
+        # boolean to control whether or not the game is in the lobby area or not
+        self.lobby_open = True
 
         self.screen_width = self.map.screen_width
 
@@ -435,10 +445,6 @@ class Game:
         self.player.update(self.map.pieces)
 
 
-        # gets player cursor so bomb can be updated correctly
-        self.player.get_cursor(pygame.mouse.get_pos())
-
-
         # checks whether bombs are created for the players
         self.player.check_bomb_creation(self.player.state_checker)
         self.other_player.check_bomb_creation(self.other_player.state_checker)
@@ -453,11 +459,11 @@ class Game:
                 
                 for player in [self.player, self.other_player]:
                     # for when a player is within explosion radius
-                    if bomb.exp_collision(player) and bomb.state == "exploded":
+                    if bomb.state == "exploded" and bomb.exp_collision(player):
                         
                         # so a player doesnt lose a life in the interim round
-                        if self.interim_round_life > 0:
-                            self.interim_round_life -= 1
+                        if self.lobby_open:
+                            self.lobby_open = False
 
                         else:    
                             # player loses life if it has been hit
@@ -473,14 +479,15 @@ class Game:
                             self.end_round()
 
         # transfers player data and updates the enemy clients player on your screen
+        try: 
+            self.other_player.set_player_variables(
+                convert_recv_client_data_to_int(self.transfer_data())
+            ) 
 
-        self.other_player.set_player_variables(
-            convert_recv_client_data_to_int(self.transfer_data())
-        ) 
-
-        # resets state checker back to 0 at the end of every update loop so that only bomb object is created
-        self.player.state_checker = 0
-
+            # resets state checker back to 0 at the end of every update loop so that only bomb object is created
+            self.player.state_checker = 0
+        except:
+            print("The client has disconnected from the server")
 
     def draw(self):
         
@@ -567,7 +574,7 @@ class Game:
 
         self.text = "INTERIM ROUND ... WEAPONS DISABLED TILL OTHER PLAYER JOINS"
         self.player.lives = self.other_player.lives = 3
-        self.interim_round_life = 1
+        self.lobby_open = True
         
         # turns the mouse back on so player can interact with the title screen
         pygame.mouse.set_visible(True)
@@ -582,10 +589,10 @@ def join_server(server_address):
     n = Network()
     
     #school ip
-    server_ip = "172.17.126.26"
+    #server_ip = "172.17.126.26"
     
     #home ip 
-    #server_ip = "192.168.1.174"
+    server_ip = "192.168.1.173"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
@@ -684,9 +691,9 @@ game = Game(player1, player2, terr)
 
 Clock = pygame.time.Clock()
 
-
+# quits the game when the user presses the red cross
 def Quitting_Game(trigger):
-    if trigger.type == "QUIT":
+    if trigger.type == QUIT:
         pygame.quit()
         sys.exit()
 
