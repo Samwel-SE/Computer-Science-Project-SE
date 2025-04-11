@@ -81,14 +81,14 @@ class Network:
             
                 self.data = recv_data_1 + recv_data_2
 
-            self.update_client_data_for_network()
+            self.update_data_client_side()
             return self.data
         
         except socket.error as e:
             print(e)
 
 
-    def update_client_data_for_network(self):
+    def update_data_client_side(self):
 
         self.id = self.data[0] # gets whether player is player 1 or player 2
 
@@ -96,14 +96,23 @@ class Network:
 
         self.cursor_pos = self.data[11:19] # gets the players cursor position
 
-        self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 3: player has been hit
+        self.state_checker = [20] # 3 states; state 0: normal game state / state 1: bomb object is created / state 2: player has been hit
 
         self.map = self.data[22:-1] # gets the map y variables for map pieces
 
 
-
+    # called when client wants to leave the server
     def leave_server(self):
-        # sends no data to the server telling the server that the client has disconnected
+        
+        # sends DISCONNECT to server so server breaks loop killing the thread
         self.client.sendall(str.encode("DISCONNECT"))
+
+        # then network connection is closed
         self.client.close()
-        print("client disconnect has been sent")
+
+        print("Disconnect sent. Client network connection has been closed")
+
+
+
+        
+        

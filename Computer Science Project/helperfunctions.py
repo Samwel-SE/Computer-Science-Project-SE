@@ -1,7 +1,4 @@
 
-#THIS SCRIPT IS COMPLETELY ORIGINAL
-
-
 # FUNCTIONS THAT ARE USED BY CLIENTS --------------------------------------------------------------------------------------------------------------------#
 
 # helper function for getting data from the server

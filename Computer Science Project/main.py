@@ -2,14 +2,14 @@ import sys
 
 import pygame
 from pygame.locals import QUIT
+import time
+
 
 from network import Network
 
-
+# below import is used with network object and server script
 from helperfunctions import convert_recv_client_data_to_int, convert_client_data_to_string, convert_recv_map_data_to_int
-import time
 
-# THIS SCRIPT IS COMPLETELY ORIGINAL ---------------------------------------------------------------------------------------------------------------------------------
 
 
 # game object class, to be inherited by all other classes
@@ -26,18 +26,10 @@ class GameObject:
     def draw(self):
         pygame.draw.rect(DISPLAYSURF, self.colour, pygame.Rect(self.x, self.y, self.width, self.height))
 
+    # checks for collision between game object and other objects
     def collision(self, obj2):
         if (self.x < obj2.x + obj2.width and self.x + self.width > obj2.x) and (self.y + self.height > obj2.y and self.y < obj2.y + obj2.height):
             return True
-
-    #gets object position
-    def get_pos(self):
-        return self.x, self.y
-    
-    #sets object position
-    def set_pos(self, pos):
-        self.x, self.y = pos[0], pos[1]
-
 
 # Map class
 class Map:
@@ -49,20 +41,18 @@ class Map:
 
         # stores y variables of all the objects making up the map
         self.y_vars = 0
-        self.piece_length = 700
+        self.piece_height = 700
 
-    # creates map obj
+    # creates map obj once y_vars stores new map sent from server
     def create_map_obj(self):
         self.pieces.clear()
         for i in range(len(self.y_vars)):
-            self.pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_length, self.colour))
+            self.pieces.append(GameObject(i, self.y_vars[i], 1, self.piece_height, self.colour))
 
     # iterates through and draws all the gameobjects making up the map
     def draw(self):
         for i in range(len(self.y_vars)):
             self.pieces[i].draw()
-
-
 
 
 # Title screen object
@@ -82,7 +72,7 @@ class Title_Screen:
         self.open = True
 
 
-    # to be called in the input function of game object
+    # to be called in the pygame event loop
     def handle_button_presses(self):
 
         if self.join_server_1_button.on_click():
@@ -91,7 +81,7 @@ class Title_Screen:
             if join_server(5555):
                 self.open = False
 
-            # you dont join the server
+            # you dont join the server as its full so error text shown
             else:
                 self.join_server_1_button.error_text_on = True    
 
@@ -101,7 +91,7 @@ class Title_Screen:
             if join_server(6666):
                 self.open = False
             
-            # you dont join the server
+            # you dont join the server as its full so error text shown
             else:
                 self.join_server_2_button.error_text_on = True
 
@@ -210,7 +200,7 @@ class Player(GameObject):
         # Once the left mouse button is pressed and there are no other bombs on screen will create a bomb object,
         if event.type == pygame.MOUSEBUTTONDOWN:
             
-            if other_player_joined():
+            if check_server_full():
                 if pygame.mouse.get_pressed(3) and len(self.bombs) == 0 and (self.state_checker != 9):
                     self.state_checker = 1
     
@@ -253,10 +243,9 @@ class Player(GameObject):
                 self.jumping = False
                 self.jump_vel = self.jump_height
 
-
-
         # then gets the coords of the players cursor
         self.get_cursor(pygame.mouse.get_pos())
+
 
     # gets coordinates of line making up player cursor
     def get_cursor(self, mouse_tuple):
@@ -302,7 +291,7 @@ class Player(GameObject):
     
 
     # function is used to control the client player in host players game
-    def set_player_variables(self, client_data):
+    def set_player_data(self, client_data):
         
         # coords 
         self.x = client_data[0]
@@ -417,7 +406,7 @@ class Game:
         
 
     # gets the player inputs
-    def getsInputs(self): 
+    def getInputs(self): 
         # only checks for player inputs when the game isn't paused
         self.player.inputs()
 
@@ -480,7 +469,7 @@ class Game:
 
         # transfers player data and updates the enemy clients player on your screen
         try: 
-            self.other_player.set_player_variables(
+            self.other_player.set_player_data(
                 convert_recv_client_data_to_int(self.transfer_data())
             ) 
 
@@ -530,8 +519,11 @@ class Game:
         
         # sets the player client back to its starting position and sets the player clients state checker to 0
         player_data = convert_recv_client_data_to_int(n.getPos())
-        self.player.set_player_variables(player_data)
-        
+        self.player.set_player_data(player_data)
+
+        # player will fall fast downwards onto next map
+        self.player.jumping = True
+
         # removes all getInputs events from queue so no bomb objects 
         pygame.event.clear()
 
@@ -549,6 +541,8 @@ class Game:
             pygame.display.flip()
             time.sleep(1)
 
+
+
     def end_round(self):
         
         self.text = f"A player has lost the round. Next Round starting in "
@@ -561,12 +555,16 @@ class Game:
         self.start_round()
 
 
+    # called once the game ends to reset to manage connections and re open main menu
     def end_game(self):
         
+        #sets the text to the end game text
         self.text = "A player has lost the game. You will be returned to Main Menu in "
+
         # starts a 5 second count down for end of game 
         self.pause_game()
         
+        #means that the network object no longer communicates with the server
         n.leave_server()
 
         global main_menu
@@ -588,15 +586,16 @@ def join_server(server_address):
 
     n = Network()
     
-    #school ip
+    # project doesnt use actual IP's only those on your local area network
+    #school LAN ip
     #server_ip = "172.17.126.26"
     
-    #home ip 
-    server_ip = "192.168.1.173"
+    #home LAN ip 
+    server_ip = "192.168.1.174"
 
     n.assign_network_address(server_ip, server_address)
     if n.connect() == "connection success":
-        n.update_client_data_for_network()
+        n.update_data_client_side()
 
         # n.getPos only returns 4 values so we need to prematurely append a 0 to act as the state for the startpos
         startpos = convert_recv_client_data_to_int(n.getPos())
@@ -623,6 +622,11 @@ def join_server(server_address):
         player1.x, player1.y = startpos[0], startpos[1]
         player2.x, player2.y = startpos[0], startpos[1]
 
+        player1.jumping = True
+        player2.jumping = True
+
+
+
         # sets the map object up
         terr.y_vars = convert_recv_map_data_to_int(n.getMap())
         terr.create_map_obj()
@@ -636,7 +640,7 @@ def join_server(server_address):
 
 
 # checks whether or not the other player has joined
-def other_player_joined():
+def check_server_full():
     if (player2.x -1000 == 0) and (player2.y -100 == 0):
         return False
     return True
@@ -728,7 +732,7 @@ while True:
             Quitting_Game(event)
 
             #gets the inputs from clients machine
-            game.getsInputs()
+            game.getInputs()
 
         # updates game
         game.update()
